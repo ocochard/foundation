@@ -1,0 +1,11 @@
+[Unit]
+Description=AutoSSH tunnel service on local port 64443
+After=network.target
+
+[Service]
+User={{ user }}
+Environment="AUTOSSH_GATETIME=0"
+ExecStart=/usr/bin/autossh -M 0 -NTq -F /home/{{ user }}/.ssh/config Tunnel
+
+[Install]
+WantedBy=multi-user.target

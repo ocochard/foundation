@@ -1,0 +1,61 @@
+#containerid, #hyperid, #fileid, #parseid, #validlistid, #containermemoryid, #containernetworkid
+{
+   float:left;
+}
+
+#unselectedid, #manageid, #selectedid
+{
+   float:left;
+}
+
+#containermemoryid, #containernetworkid
+{
+   width: 600px;
+}
+
+#unselectedid, #selectedid
+{
+   width:250px;
+}
+
+#buttonaddid, #buttondelid, .buttonaddid, .buttondelid
+{
+   margin-left: auto;
+   margin-right: auto;
+   margin-top: auto;
+   width:140px;
+}
+
+#containerid, #hyperid, #parseid, #probeid
+{
+   width:300px;
+}
+
+#fileid
+{
+   width:250px;
+}
+
+#manageid
+{
+   margin-top: 100px;
+   width:250px;     
+}
+
+.form-select
+{
+   width:280px;
+}
+
+#containerid, #hyperid, #fileid, #parseid, #probeid
+{
+   //margin-right:5px;
+   margin-top:4px;
+}
+
+#validlistid,.validlistid
+{
+   margin:20px;
+   width:140px;
+}
+

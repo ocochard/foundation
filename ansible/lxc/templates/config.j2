@@ -1,0 +1,7 @@
+Host Tunnel
+    Hostname         localhost
+    User             {{ user }}
+    Port             22
+    IdentityFile     ~/.ssh/id_rsa
+    LocalForward     64443 localhost:44443
+    LocalForward     192.168.49.49:64443 localhost:44443

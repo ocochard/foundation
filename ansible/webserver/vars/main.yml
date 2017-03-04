@@ -1,0 +1,15 @@
+---
+# vars file for webserver
+host_dbserver: "10.0.0.21  dbserver"
+ansible_fqdn: "cdpweather"
+libraries: libraries-7.x-2.3.tar.gz
+editor: css_editor-7.x-1.0.tar.gz
+date: date-7.x-2.9.tar.gz
+jquery: jquery_update-7.x-2.7.tar.gz
+highcharts: Highcharts-5.0.6.zip
+highmaps: Highmaps-5.0.6.zip
+jquery_ui: jquery-ui-1.10.4.zip
+jquery_ui_themes: jquery-ui-themes-1.10.4.zip
+DataTables: DataTables-1.10.13
+sliderfields: sliderfield-7.x-2.1-beta1.tar.gz
+corporateclean: corporateclean-7.x-2.3.tar.gz

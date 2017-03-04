@@ -1,0 +1,99 @@
+# vim:ft=ansible:
+---
+# tasks file for dockero
+
+- name: Adding common package
+  apt: name={{ item }} update_cache=yes state=present
+  with_items:
+     - ca-certificates
+     - gnupg2
+     - autossh
+  # environment:
+     # http_proxy: "{{ http_proxy }}"
+
+- name: Add new Keys for docker
+  apt_key:
+     keyserver: hkp://ha.pool.sks-keyservers.net:80
+     id: 58118E89F3A912897C070ADBF76221572C52609D
+
+- name: Test if docker.list exist
+  stat:
+     path: /etc/apt/sources.list.d/docker.list
+  register: docker_stat
+
+- name: Insert docker.list in repository
+  template:
+    src: docker.list
+    dest: /etc/apt/sources.list.d
+    owner: root
+    group: root
+    mode: 644
+
+- name: Update docker system
+  apt: 
+     update_cache: yes 
+     cache_valid_time: 3600
+
+- name: Upgrade docker system
+  apt: upgrade=yes 
+
+
+- name: Adding docker-engine package
+  apt: name={{ item }} update_cache=yes state=present allow_unauthenticated=yes
+  # apt: name={{ item }} 
+  with_items:
+     - docker-engine
+     - bridge-utils
+  notify:
+     - restart docker
+
+# Foundation Git Clone
+- stat:
+   path: /opt/foundation
+  register: git_stat
+
+- name: Clone foundation
+  command: git clone https://github.com/gandalf-the-white/foundation /opt/foundation/
+  when: git_stat.stat.isdir is not defined
+
+# Initilization Crontab
+- name: Init Cron
+  command: crontab /opt/foundation/scripts/rootcrontab
+
+
+# - name: Install NodeJS repository
+  # get_url:
+     # url: https://deb.nodesource.com/setup_7.x
+     # dest: /tmp/setup_7.x
+     # mode: 0744
+
+# - name: Execute script NodeJS
+  # command: ./setup_7.x
+  # args:
+     # chdir: /tmp
+
+# - name: Remove old nodejs
+  # apt:
+     # name: nodejs
+     # state: absent
+
+# - name: Adding nodejs package
+  # apt: name={{ item }} update_cache=yes state=present
+  # with_items:
+     # - nodejs
+
+# ssh and authorisation
+- name: Generate a key 
+  user: 
+     name: "{{ ansible_user }}"
+     generate_ssh_key: yes
+     ssh_key_bits: 2048
+     ssh_key_file: .ssh/id_rsa
+
+- name: Authorized keys
+  shell: cat id_rsa.pub >> authorized_keys
+  args:
+     chdir: /home/{{ ansible_user }}/.ssh
+
+- include: 'tunnel.yml'
+- include: 'network.yml'

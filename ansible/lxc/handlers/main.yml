@@ -1,0 +1,17 @@
+# vim:ft=ansible:
+---
+# handlers file for hypervisor
+- name: restart iptables
+  become: yes
+  shell: iptables-restore <  /etc/iptables/rules.v4
+
+- name: start tunnel
+  service: name=autossh-tunnel enabled=yes state=started
+  tags: tunnel
+
+- name: restart sysctl
+  shell: sysctl -p
+
+- name: daemon reload
+  shell: systemctl daemon-reload
+  tags: daemon

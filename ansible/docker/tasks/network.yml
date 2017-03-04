@@ -1,0 +1,35 @@
+# vim:ft=ansible:
+---
+# Modify /etc/network/interfaces
+
+- name: Test if exist /etc/network/interfaces
+  stat:
+    path: /etc/network/interfaces.ansible
+  register: stat_result
+
+# - name: Delete br0
+  # command: ip link delete dev br0
+  # when: stat_result.stat.exists == True
+
+# - name: Reinit /etc/network/interfaces
+  # command: mv /etc/network/interfaces.ansible /etc/network/interfaces
+  # when: stat_result.stat.exists == True
+
+# - name: Save /etc/network/interfaces
+  # command: cp /etc/network/interfaces /etc/network/interfaces.ansible
+  # when: stat_result.stat.exists == False
+  
+- name: Add bridge configuration
+  blockinfile:
+    dest: /etc/network/interfaces
+    block: |
+      
+      auto lo:1
+      iface lo:1 inet static
+        address 192.168.49.49
+        netmask 255.255.255.0
+
+
+# Initialisation
+- name: Create lo 1
+  command: ip addr add dev lo broadcast 192.168.49.255 local 192.168.49.49/24 label lo:1

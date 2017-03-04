@@ -1,0 +1,59 @@
+# vim:ft=ansible:
+---
+# Modify /etc/network/interfaces
+
+- name: Test if exist /etc/network/interfaces
+  stat:
+    path: /etc/network/interfaces.ansible
+  register: stat_result
+
+# - name: Delete br0
+  # command: ip link delete dev br0
+  # when: stat_result.stat.exists == True
+
+# - name: Reinit /etc/network/interfaces
+  # command: mv /etc/network/interfaces.ansible /etc/network/interfaces
+  # when: stat_result.stat.exists == True
+
+# - name: Save /etc/network/interfaces
+  # command: cp /etc/network/interfaces /etc/network/interfaces.ansible
+  # when: stat_result.stat.exists == False
+  
+- name: Add bridge configuration
+  blockinfile:
+    dest: /etc/network/interfaces
+    block: |
+      
+      auto lo:1
+      iface lo:1 inet static
+        address 192.168.49.49
+        netmask 255.255.255.0
+
+      auto br0
+      iface br0 inet static
+        bridge_ports none
+        bridge_fd 0
+        bridge_maxwait 0
+        address 192.168.1.1
+        netmask 255.255.255.0
+
+# Initialisation
+- name: Create lo 1
+  command: ip addr add dev lo broadcast 192.168.49.255 local 192.168.49.49/24 label lo:1
+
+- name: Create bridge bro
+  command: brctl addbr br0
+
+- name: Define address to the bridge br0
+  command: ip addr add dev br0 broadcast 192.168.1.255 local 192.168.1.1/24
+
+- name: Enable  the bridge br0
+  command: ip link set dev br0 up
+
+# Add forwarding
+- name: Enable forwarding
+  lineinfile:
+     dest: /etc/sysctl.conf
+     regexp: '#net.ipv4.ip_forward=1'
+     line: 'net.ipv4.ip_forward=1'
+  notify: restart sysctl

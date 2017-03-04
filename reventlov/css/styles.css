@@ -1,0 +1,47 @@
+#managehyperid, #bridgeid, #buttonstartid, #buttondelid, #buttonstopid, #containermemoryid, #containernetworkid
+{
+   float:left;
+}
+
+#containermemoryid, #containernetworkid
+{
+   width: 50%;
+}
+
+
+#bridgeid
+{
+   width:270px;
+}
+
+.form-select
+{
+   width:200px;
+   height:18;
+}
+
+#managehyperid
+{
+   width: 90%;
+}
+
+#tablecontainerid
+{
+   width: 100%;
+}
+
+#quantityid, #architectureid, #fileid
+{
+   margin-right: 5px;
+}
+
+#fileid
+{
+   margin-left:10px;
+}
+
+#submitfileid
+{
+   float:left;
+   margin:20px;
+}

@@ -1,0 +1,61 @@
+#mainview, #chartaview, #chartbview, #timeview, #statview , #probeid, #urlid, #dateid, #sliderid, #afterid, #submitid{
+   float:left;
+}
+
+#timeview, #statview
+{
+   width:50%;
+}
+
+#mainview
+{
+   width:50%;
+   margin-right:20px;
+}
+#chartaview, #chartbview
+{
+   width:24%;
+}
+
+#probeid, #urlid
+{
+   width:270px;
+}
+
+#afterid
+{
+   width:370px;
+}
+
+#sliderid, #submitid
+{
+   width:100px;
+   height:60px;
+}
+
+#edit-level-value, #edit-days-value
+{
+   width:20px;
+}
+
+#edit-level-container, #edit-days-container 
+{
+   margin-left: 10px;
+   height:80px;
+}
+
+#sliderid
+{
+   margin-left: 10px;
+}
+
+#submitid
+{
+   margin-top: 20px;
+}
+
+.form-select
+{
+   width:260px;
+   height:18;
+}

@@ -1,0 +1,6 @@
+name = Hari Seldon
+description = Hari Seldon
+core = 7.x
+dependencies[] = libraries
+dependencies[] = date
+package = Foundation

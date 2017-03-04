@@ -1,0 +1,53 @@
+---
+# Save /etc/dhcp/dhcpd.conf#subnet 10.254.239.0 netmask 255.255.255.224 {
+
+# - name: Copy  /etc/dhcp/dhcpd.conf
+  # command: cp /etc/dhcp/dhcpd.conf /etc/dhcp/dhcpd.conf.ansible
+
+# Copy the dhcpd.conf to /etc/dhcp/
+- template:
+    src: dhcpd.conf
+    dest: /etc/dhcp/dhcpd.conf
+    owner: root
+    group: root
+    mode: 644
+
+# - name: Test if exist /etc/default/isc-dhcp-server.ansible
+  # stat:
+    # path: /etc/default/isc-dhcp-server.ansible
+  # register: stat_result
+
+# - name: Reinit /etc/default/isc-dhcp-server
+  # command: mv /etc/default/isc-dhcp-server.ansible /etc/default/isc-dhcp-server
+  # when: stat_result.stat.exists == True
+
+# - name: Save /etc/default/isc-dhcp-server
+  # command: cp /etc/default/isc-dhcp-server /etc/default/isc-dhcp-server.ansible
+  # when: stat_result.stat.exists == False
+
+# Add bro to the file /etc/fefault/isc-dhcp-server
+- lineinfile:
+    dest: /etc/default/isc-dhcp-server
+    regexp: '^INTERFACESv4'
+    line: 'INTERFACESv4="br0"'
+
+- lineinfile:
+    dest: /etc/default/isc-dhcp-server
+    regexp: '^INTERFACESv6'
+    line: '#INTERFACESv6=""'
+
+- lineinfile:
+    dest: /etc/default/isc-dhcp-server
+    regexp: '#DHCPDv4_CONF'
+    line: 'DHCPDv4_CONF'
+
+- lineinfile:
+    dest: /etc/default/isc-dhcp-server
+    regexp: '#DHCPDv4_PID'
+    line: 'DHCPDv4_PID'
+
+# Restart isc-dhcp-server
+- name: Restart dhcpd
+  service:
+    name: isc-dhcp-server
+    state: restarted

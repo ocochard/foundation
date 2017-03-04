@@ -1,0 +1,66 @@
+# vim:ft=ansible:
+---
+# tasks file for lxc
+- name: Install packages
+  apt: name={{ item }} update_cache=yes
+  with_items:
+    - git
+    - lxc
+    - iptables-persistent
+    - bridge-utils
+    - isc-dhcp-server
+    - autossh
+
+# Enable memory cgroup
+- name: Enable Memory Cgroup
+  lineinfile:
+    dest: /etc/default/grub
+    regexp: '^GRUB_CMDLINE_LINUX='
+    line: 'GRUB_CMDLINE_LINUX="cgroup_enable=memory"'
+
+- name: Valid Grub Modification
+  command: /usr/sbin/update-grub
+
+# Foundation Git Clone
+- stat:
+    path: /opt/foundation
+  register: git_stat
+
+- name: Clone foundation
+  command: git clone https://github.com/gandalf-the-white/foundation /opt/foundation/
+  when: git_stat.stat.isdir is not defined
+
+# Initilization Crontab
+- name: Init Cron
+  command: crontab /opt/foundation/scripts/rootcrontab
+
+# Init iptables
+- name: Configure Iptables Rules
+  template: 
+     src: rules.v4
+     dest: /etc/iptables/rules.v4
+     owner: root
+     group: root
+     mode: 0644
+  notify: restart iptables
+
+# ssh and authorisation
+- name: Generate a key 
+  user: 
+     name: "{{ ansible_user }}"
+     generate_ssh_key: yes
+     ssh_key_bits: 2048
+     ssh_key_file: .ssh/id_rsa
+
+- name: Authorized keys
+  authorized_key:
+    user: "{{ ansible_user }}"
+    state: present
+    key: "{{ lookup('file', '/home/{{ ansible_user }}/.ssh/id_rsa.pub') }}"
+    validate_certs: False
+
+- include: 'tunnel.yml'
+- include: 'network.yml'
+- include: 'dhcp.yml'
+
+

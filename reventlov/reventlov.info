@@ -1,0 +1,5 @@
+name = R. Giskard Reventlov
+description = R. Giskard Reventlov
+core = 7.x
+dependencies[] = libraries
+package = Foundation

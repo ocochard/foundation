@@ -1,0 +1,48 @@
+#notincludedid, #includedid, #periodid, #informationid, #manageid, #statusid, #statuschoiceid, #submitid
+{
+   float:left;
+}
+
+#notincludedid, #includedid
+{
+   width:270px;
+}
+
+#submitid
+{
+   width:200px;
+}
+
+#submitid
+{
+   margin-top: 15px;
+   margin-left: 40px;
+}
+
+#informationid
+{     
+   margin-top: 10px;
+   margin-left: 40px;
+   margin-bottom: 40px;
+}
+
+#manageid, #statusid
+{
+   width:50%;
+   height: 50%;
+}
+
+#periodid
+{
+   width: 100px;
+}
+
+#statuschoiceid, #submitid
+{
+   height: 50px;
+}
+
+.form-select
+{
+   width:260px;
+}

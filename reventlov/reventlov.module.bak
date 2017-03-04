@@ -1,0 +1,272 @@
+<?php
+
+function Reventlov_menu() {
+  $items = array();
+
+  $items['Reventlov'] = array(
+    'title'             => 'Hypervisor',
+    'description'       => 'A new approach of R. Giskard Reventlov',
+    'page callback'     => '_Reventlov_form',
+    'page arguments'    => array(),
+    'access arguments'  => array('access Reventlov content'),
+    'file'              => 'reventlov.inc',
+  );
+
+  return $items;
+}
+
+function Reventlov_permission() {
+  return array(
+    'access Reventlov content' => array(
+      'title' => t('Access content R. Giskard Reventlov module'),
+      'description' => t('Allow users to access the R. Giskard Reventlov'),
+    ));
+}
+
+function _Reventlov_form() {
+  $cat_form = drupal_get_form("_Reventlov_build_form");
+  $output  = "";
+  $output .= render($cat_form);
+
+  $htmltext  = $output;
+
+  return $htmltext; 
+}
+
+function _Reventlov_build_form($form, $form_state) {
+  Reventlov_graphic_libraries_load($form, $form_state);
+
+  $tmp_hypervisor = _Reventlov_gethypervisors();
+  #$tmp_probes       = _Reventlov_getprobe();
+
+  $hyper_selected = isset($_SESSION['Reventlov']['hypervisor']) ? $_SESSION['Reventlov']['hypervisor'] : '';
+  $container_selected = isset($form_state['values']['hypervisor']) ? _Reventlov_getcontainers($form_state['values']['hypervisor']) : array();
+
+  if (isset($_SESSION['Reventlov']['parsed']) && isset($_SESSION['Reventlov']['hypervisor']))
+    $parsed_selected = $_SESSION['Reventlov']['parsed'];
+  else
+    $parsed_selected = array();
+
+
+  $form['global'] = array(
+    '#type'            => 'item',
+    '#prefix'          => '<div id="globalid">',
+    '#suffix'          => '</div>',
+  );
+
+  $form['global']['input'] = array(
+    '#type'            => 'fieldset',
+    '#title'           => t('Input Information'),
+    '#prefix'          => '<div id="lxcid">',
+    '#suffix'          => '</div>',
+    '#collapsible'     => TRUE,
+    '#collapsed'       => FALSE,
+  );
+
+  $form['global']['input']['hypervisor'] = array(
+    '#type'           => 'select',
+    '#title'          => t('Hypervisors'),
+    '#options'        => $tmp_hypervisor,
+    '#prefix'         => '<div id="hyperid">',
+    '#suffix'         => '</div>',
+    '#size'           => 4,
+    '#attributes'   => array(
+      'readonly'      => 'readonly',
+      'class'         => array('hyperid')),
+    '#ajax'         => array(
+      'callback'     => 'Reventlov_hyper_callback',
+      'wrapper'      => 'containerid',
+    ),
+  );
+
+  $form['global']['input']['container'] = array(
+    '#type'           => 'select',
+    '#title'          => t('Containers'),
+    '#options'        => $container_selected,
+    '#prefix'         => '<div id="containerid">',
+    '#suffix'         => '</div>',
+    '#size'           => 10,
+    '#attributes'   => array(
+      'readonly'     => 'readonly',
+      'class'        => array('containerid')
+    ),
+    //'#ajax'         => array(
+    //  'callback'     => 'Reventlov_container_callback',
+    //  'wrapper'      => 'containerid',
+    //),
+  );
+
+  $form['global']['input']['file'] = array(
+    '#type'           => 'file',
+    '#prefix'         => '<div id="fileid">',
+    '#suffix'         => '</div>',
+    '#default_value'  => isset($form_state['values']['file']) ? $form_state['values']['file'] : array(),
+    '#title'          => t('New Container'),
+    //'#description'    => t('Upload the list'),
+  );
+
+  $form['global']['input']['submit_button'] = array(
+    '#type' => 'submit',
+    '#value' => t('Upload'), 
+    '#prefix'         => '<div id="fileid">',
+    '#suffix'         => '</div>',
+  );
+
+  //##############################################################################
+  // EDIT CONTAINER
+  //##############################################################################
+
+  $form['global']['editctn'] = array(
+    '#type'            => 'fieldset',
+    '#title'           => t('Containers Status'),
+    '#prefix'          => '<div id="statusctnid">',
+    '#suffix'          => '</div>',
+    '#collapsible'     => TRUE,
+    '#collapsed'       => FALSE,
+  );
+
+  if (isset($form_state['values']['hypervisor']))
+    $ctn_unselected = _Reventlov_getdisabledcontainers($form_state['values']['hypervisor']);
+  else
+    $ctn_unselected = array();
+
+  $form['global']['editctn']['unselected'] = array(
+    '#type'           => 'select',
+    '#multiple'       => TRUE,
+    '#options'        => $ctn_unselected,
+    '#title'          => t('Disabled Containers'),
+    '#prefix'         => '<div id="unselectedid">',
+    '#suffix'         => '</div>',
+    '#size'           => 15,
+    //'#default_value'  => isset($form_state['values']['url']) ? $form_state['values']['url'] : '',
+    '#attributes'   => array(
+      'readonly'     => 'readonly',
+      'class'        => array('unselectedid')),
+  );
+
+  $form['global']['editctn']['manage'] = array(
+    '#type'            => 'item',
+    '#prefix'          => '<div id="manageid">',
+    '#suffix'          => '</div>',
+    '#attributes'   => array(
+      'readonly'      => 'readonly',
+      'class'        => array('manageid')),
+  );
+
+  $form['global']['editctn']['manage']['submitadd'] = array(
+    '#type'        => 'submit',
+    '#value'       => t('>>Add>>'),
+    '#prefix'      => '<div id="buttonaddid">',
+    '#suffix'      => '</div>',
+    '#submit'      => array('_Reventlov_submit_add',),
+    '#attributes'  => array(
+      'class'     => array('buttonaddid'),
+      //'disabled' => TRUE,
+    ),
+  );
+
+  $form['global']['editctn']['manage']['submitdel'] = array(
+    '#type'        => 'submit',
+    '#value'       => t('<<Del<<'),
+    '#prefix'      => '<div id="buttondelid">',
+    '#suffix'      => '</div>',
+    '#submit'      => array('_Reventlov_submit_del',),
+    '#attributes'  => array(
+      'class'     => array('buttondelid'),
+      //'disabled' => TRUE,
+    ),
+  );
+
+  if (isset($form_state['values']['hypervisor']))
+    $ctn_selected = _Reventlov_getenabledcontainers($form_state['values']['hypervisor']);
+  else
+    $ctn_selected = array();
+
+
+  $form['global']['editctn']['selected'] = array(
+    '#type'           => 'select',
+    '#multiple'       => TRUE,
+    '#options'        => $ctn_selected,
+    '#title'          => t('Enabled Containers'),
+    '#prefix'         => '<div id="selectedid">',
+    '#suffix'         => '</div>',
+    '#size'           => 15,
+    //'#default_value'  => isset($form_state['values']['url']) ? $form_state['values']['url'] : '',
+    '#attributes'   => array(
+      'readonly'     => 'readonly',
+      'class'        => array('selectedid')),
+  );
+
+  return $form;
+};
+
+//******************************************************//
+// CALLBACK AJAX
+//******************************************************//
+
+function Reventlov_hyper_callback($form, $form_state) {
+  //$_SESSION['Reventlov'] = $form_state['values'];
+  //$_SESSION['Reventlov']['parsed'] = array();
+  if(isset($form_state) and isset($form_state['values']))
+    $_SESSION['Reventlov'] = $form_state['values'];
+
+  $select1    = $form['global']['input']['container'];
+  $select2    = $form['global']['editctn'];
+
+  $commands = array();
+  $commands[] = ajax_command_replace('#containerid', drupal_render($select1));
+  $commands[] = ajax_command_replace('#statusctnid', drupal_render($select2));
+
+  return array('#type' => 'ajax', '#commands' => $commands);
+  //return $form['global']['input']['container'];
+}
+
+//******************************************************//
+// BUTTONS
+//******************************************************//
+
+function _Reventlov_build_form_submit($form, &$form_state) {
+  if (isset($_SESSION['Reventlov']['hypervisor'])){
+
+    $file_upload = file_save_upload('file', array());
+
+    if ($file_upload != null) {
+      $content = file($file_upload->uri);
+      //$_SESSION['Reventlov']['parsed'] = $content;
+
+      foreach($content as $key => $line){
+        //drupal_set_message('Le fichier: <strong>"' . $line . '"</strong> est bien sur le serveur');
+        $_SESSION['Reventlov']['parsed'][$line] = $line;
+      }
+
+      $content = $_SESSION['Reventlov']['parsed'];
+      _Reventlov_add_containers($content);
+    }
+  }
+}
+
+function _Reventlov_submit_add($form, &$form_state) {
+  if(isset($form_state) and isset($form_state['values']))
+    $_SESSION['Reventlov'] = $form_state['values'];
+
+  _Reventlov_enable_ctn($form, $form_state);
+
+  $form_state['rebuild']=TRUE;
+}
+
+function _Reventlov_submit_del($form, &$form_state) {
+  if(isset($form_state) and isset($form_state['values']))
+    $_SESSION['Reventlov'] = $form_state['values'];
+
+  _Reventlov_disable_ctn($form, $form_state);
+
+  $form_state['rebuild']=TRUE;
+}
+
+//******************************************************//
+// LIBRARIES PROCESS
+//******************************************************//
+
+function Reventlov_graphic_libraries_load($form, $form_state) {
+  drupal_add_css(drupal_get_path('module', 'Reventlov') . '/css/Reventlov.css');
+}

@@ -1,0 +1,69 @@
+# vim:ft=ansible:
+---
+# name apply common configuration to all nodes
+# ansible-playbook maas.yml -i hosts --ask-sudo-pass
+
+- hosts: all
+  become: true
+  become_user: root
+  become_method: sudo
+  roles:
+    - common
+  environment:
+    ftp_proxy: http://http-proxy.rd.francetelecom.fr:3128
+    http_proxy: http://http-proxy.rd.francetelecom.fr:3128
+    https_proxy: http://http-proxy.rd.francetelecom.fr:3128
+
+# Deploy MySQL and configure access
+- hosts: dbserver
+  become: true
+  become_user: root
+  become_method: sudo
+  roles:
+     - dbserver
+  environment:
+    ftp_proxy: http://http-proxy.rd.francetelecom.fr:3128
+    http_proxy: http://http-proxy.rd.francetelecom.fr:3128
+    https_proxy: http://http-proxy.rd.francetelecom.fr:3128
+
+
+# name configure the webserver
+- hosts: webserver
+  become: true
+  become_user: root
+  become_method: sudo
+  roles:
+     - webserver
+  environment:
+    ftp_proxy: http://http-proxy.rd.francetelecom.fr:3128
+    http_proxy: http://http-proxy.rd.francetelecom.fr:3128
+    https_proxy: http://http-proxy.rd.francetelecom.fr:3128
+
+
+# Deploy lxc process
+- hosts: lxc
+  become: true
+  become_user: root
+  become_method: sudo
+  roles:
+    - lxc
+  environment:
+    ftp_proxy: http://http-proxy.rd.francetelecom.fr:3128
+    http_proxy: http://http-proxy.rd.francetelecom.fr:3128
+    https_proxy: http://http-proxy.rd.francetelecom.fr:3128
+
+
+# Deploy docker process
+- hosts: docker
+  become: true
+  become_user: root
+  become_method: sudo
+  roles:
+     - docker
+  environment:
+    ftp_proxy: http://http-proxy.rd.francetelecom.fr:3128
+    http_proxy: http://http-proxy.rd.francetelecom.fr:3128
+    https_proxy: http://http-proxy.rd.francetelecom.fr:3128
+
+
+

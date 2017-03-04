@@ -1,0 +1,5 @@
+name = Salvor Hardin
+description = Salvor Hardin
+core = 7.x
+dependencies[] = libraries
+package = Foundation

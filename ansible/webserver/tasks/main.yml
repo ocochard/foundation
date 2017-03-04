@@ -1,0 +1,112 @@
+# vim:ft=ansible:
+---
+# tasks file for webserver
+- name: Adding webserver packages
+  apt: name={{ item }} update_cache=yes
+  with_items:
+      - apache2
+      - curl
+      - git
+      - vim
+      - autossh
+      - mariadb-client
+      - php 
+      - php-xml 
+      - php-mysql 
+      - php-gd 
+      - php-curl 
+      - php-apcu 
+      - php-mbstring
+      - composer
+      - unzip
+      - fping
+      - cron
+
+- name: Active Rewrite Apache
+  command: a2enmod rewrite
+  notify:
+     - restart apache 
+
+- name: Enable SSL Apache
+  command: a2enmod ssl
+
+- name: Enable vhost 
+  template:
+     src: cdpweather.conf
+     dest: /etc/apache2/sites-available/cdpweather.conf
+     owner: root
+     group: root
+
+- name: Disable default site conf
+  command: a2dissite 000-default.conf
+
+- name: Enable cdpweather conf site
+  command: a2ensite cdpweather.conf
+
+- name: Modify upload_max_filesize
+  lineinfile:
+     dest: /etc/php/7.0/apache2/php.ini
+     regexp: '^upload_max_filesize'
+     line: 'upload_max_filesize = 1000M'
+
+- name: Modify post_max_size
+  lineinfile:
+     dest: /etc/php/7.0/apache2/php.ini
+     regexp: '^post_max_size'
+     line: 'post_max_size = 1000M'
+
+- name: create self-signed SSL cert
+  command: openssl req -new -nodes -x509 -subj "/C=US/ST=Oregon/L=Portland/O=IT/CN=${ansible_fqdn}" -days 3650 -keyout /etc/ssl/private/server.key -out /etc/ssl/certs/server.crt 
+  notify:
+     - restart apache 
+
+# # Install drush
+# - name: Drush Create
+  # shell: php -r "readfile('https://s3.amazonaws.com/files.drush.org/drush.phar');" > drush
+  # args:
+     # chdir: /tmp
+
+# - name: Drush chmod
+  # file:
+     # path: /tmp/drush
+     # owner: root
+     # group: root
+     # mode: "u+x"
+
+# - name: Drush Move /usr/local/bin
+  # command: mv /tmp/drush /usr/local/bin
+  # args:
+     # chdir: /tmp
+
+# Install drush alternative
+# - name: Drush Delete Alternative
+  # shell: composer global remove drush/drush
+  # become: yes
+  # become_user: "{{ ansible_user }}"
+
+- name: Drush Create Alternative
+  shell: composer global require drush/drush
+  become: yes
+  become_user: "{{ ansible_user }}"
+
+# Add DBSERVER IP address
+- name: Add IP Address dbserver
+  blockinfile:
+     dest: /etc/hosts
+     block: |
+        {{ ipdbserver }}   dbserver
+
+#         {{ item.ip }} {{ item.name }}
+  # with_items:
+     # - { name: dbserver, ip: {{ ipdbserver }} }
+
+- name: Generate SSH keys
+  shell: "ssh-keygen -b 2048 -t rsa -f /home/{{ ansible_user }}/.ssh/id_rsa -q -N ''"
+  args:
+     creates: /home/{{ ansible_user }}/.ssh/id_rsa
+  become: yes
+  become_user: "{{ ansible_user }}"
+  tags:
+     - debug
+
+- include: 'drupal.yml'

@@ -1,0 +1,8 @@
+[dbserver]
+
+[webserver]
+
+[lxc]
+10.192.96.60 ansible_user=spike
+
+[docker]

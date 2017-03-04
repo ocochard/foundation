@@ -1,0 +1,289 @@
+<?php
+
+function hardin_menu() {
+   $items = array();
+
+   //$items['ExplorerCatalog'] = array(
+   $items['Hardin'] = array(
+      'title'              => 'Image Manager',
+      'page callback'      => 'drupal_get_form',
+      'page arguments'     => array('hardin_form'),
+      'description'        => 'Manage applications',
+      'menu_name'          => 'main-menu',
+      'type'               => MENU_NORMAL_ITEM,
+      'access arguments'   => array('access hardin content'),
+   );
+
+   $items['HardinGetImages'] = array(
+      'title'              => 'List images',
+      'page callback'      => 'hardin_getimages_callback',
+      'page arguments'     => array(),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access hardin content'),
+   );
+
+   return $items;
+}
+
+function hardin_permission() {
+   return array(
+      'access hardin content' => array(
+         'title' => t('Access content Salvor Hardin module'),
+         'description' => t('Allow users to access the Salvor Hardin'),
+      ));
+}
+
+function hardin_form($form, &$form_state) {
+   hardin_load_libraries();
+
+   $form['description'] = array(
+      '#type' => 'item',
+      '#title' => t('Propose to manage different applications'),
+   );
+
+   $form['catalog'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('List applications'),
+   );
+
+   $html  = '<table id="tableimage" class="display" width="100%" cellspacing="0">';
+   $html .= '<thead>';
+   $html .= '<tr>';
+   $html .= '<th>imageid</th>';
+   $html .= '<th>imagename</th>';
+   $html .= '<th>path</th>';
+   $html .= '<th>vtype</th>';
+   $html .= '<th>information</th>';
+   $html .= '<th>architecture</th>';
+   $html .= '<th>command</th>';
+   $html .= '<th>status</th>';
+   $html .= '</tr>';
+   $html .= '</thead>';
+   $html .= '</table>';
+
+   $form['catalog']['tableimages'] = array(
+      '#markup'   => '<div id="tableimageid">' . $html . '</div>',
+   );
+
+   $form['edit'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Edition'),
+   );
+
+   $html = 'Upload your image. it will be moderated after validation';
+
+   $form['edit']['information'] = array(
+      '#markup'      => $html,
+      '#prefix'      => '<div id="informationid">',
+      '#suffix'      => '</div>',
+   );
+
+
+   $options = array(
+      'Lxc'    => 'Lxc',
+      'Docker' => 'Docker',
+      'Jail'   => 'Jail', 
+   );
+
+   $form['edit']['virtualtype'] = array(
+      '#type'           => 'radios',
+      '#title'          => t('Virtual Type'),
+      '#options'        => $options,
+      '#prefix'         => '<div id="virtualtypeid">',
+      '#suffix'         => '</div>',
+      '#required'       => TRUE,
+   );
+
+
+   $form['edit']['architecture'] = array(
+      '#type'           => 'radios',
+      '#title'          => t('Architecture'),
+      '#options'        => array(
+         'x86_64' => 'x86_64', 
+         'i686'   => 'i686',
+         'ARMv7'  => 'ARMv7',
+         'ARMv8'  => 'ARMv8'),
+      '#prefix'         => '<div id="architectureid">',
+      '#suffix'         => '</div>',
+      '#required'       => TRUE,
+   );
+
+   $form['edit']['file'] = array(
+      '#type'           => 'file',
+      '#title'          => t('New Containers'),
+      '#description' => t('Upload a file, allowed extensions: maas'),
+      //'#prefix'         => '<div id="fileid">',
+      //'#suffix'         => '</div>',
+      //'#value'          => 'Select your file',
+      //'#default_value'  => isset($form_state['values']['file']) ? $form_state['values']['file'] : array(),
+   );
+
+   $form['edit']['command'] = array(
+      '#type'           => 'textfield',
+      '#title'          => t('Input the software command to execute depending the cron'),
+      '#attributes'     => array('maxlength' => 100, 'size' => 100),
+      '#prefix'         => '<div id="commandid">',
+      '#suffix'         => '</div>',
+      '#required'       => TRUE,
+   );
+
+
+   $form['edit']['name'] = array(
+      '#type'           => 'textfield',
+      '#title'          => t('Input the name of the new image'),
+      '#attributes'     => array('maxlength' => 20, 'size' => 20),
+      '#prefix'         => '<div id="editnameid">',
+      '#suffix'         => '</div>',
+      '#required'       => TRUE,
+   );
+
+   $form['edit']['comment'] = array(
+      '#type'           => 'textarea',
+      '#title'          => t('Input a comment to explain the new image'),
+      '#attributes'     => array('maxlength' => 200, 'size' => 200),
+      '#prefix'         => '<div id="editcommentid">',
+      '#suffix'         => '</div>',
+      '#required'       => TRUE,
+   );
+
+
+   $form['edit']['submit_button'] = array(
+      '#type'     => 'submit',
+      '#value'    => t('Upload '),
+      '#prefix'   => '<div id="submitfileid">',
+      '#suffix'   => '</div>',
+      '#submit'   => array('hardin_form_submit',),
+   );
+
+   return $form;
+}
+
+/*
+ * Submit button to load file tar.gz
+ */
+
+function hardin_form_validate($form, &$form_state) {
+   $data = array();
+   $data['name']           = $form_state["values"]['name'];
+   $data['virtualtype']    = $form_state["values"]['virtualtype'];
+   $data['architecture']   = $form_state["values"]['architecture'];
+   $data['comment']        = $form_state["values"]['comment'];
+   $data['command']        = $form_state["values"]['command'];
+
+   $destination = "public://templates";
+   $file = file_save_upload('file',
+      array( 'file_validate_extensions' => array('maas')),
+      $destination, FILE_EXISTS_REPLACE);
+
+   if ($file) {
+      //drupal_set_message("file uploaded");
+      //$file->status = 1;
+      $file->status = FILE_STATUS_PERMANENT;
+      //file_save($file);
+      $data['path'] = $file->filename;
+      add_new_image($data);
+
+      $form_state['storage']['filename'] = $file->uri;
+
+   } else {
+      //drupal_set_message("file not uploaded");
+      form_set_error('upload', t('File upload failed.'));
+   }
+}
+
+
+function hardin_form_submit($form, &$form_state) {
+  /* $data = array();
+   $data['name']           = $form_state["values"]['name'];
+   $data['virtualtype']    = $form_state["values"]['virtualtype'];
+   $data['architecture']   = $form_state["values"]['architecture'];
+   $data['comment']        = $form_state["values"]['comment'];
+
+   //truncate file_managed;
+   $destination = "public://templates";
+   $file = file_save_upload('file', 
+      array( 'file_validate_extensions' => array('maas')),
+      $destination, FILE_EXISTS_RENAME);
+
+
+   if ($file) {
+      $data['path'] = $file->filename;
+      //drupal_set_message('<pre' . print_r($data, true) . '</pre>');
+
+      add_new_image($data);
+
+      //if ($file = file_move($file, 'public://templates/')) {
+      //   add_new_image($data);
+      //} else {
+      //   form_set_error('file', t('Failed to write the uploaded file the site\'s file folder.'));
+      //}
+   } else {
+      form_set_error('file', t('No file was uploaded.'));
+   }
+
+   //file_set_status($file, FILE_STATUS_PERMANENT);
+   $file->status = FILE_STATUS_PERMANENT; 
+   */
+   //$form_state['rebuild']=TRUE;
+   $form_state['redirect'] = 'Hardin';
+} 
+
+function add_new_image($data) {
+   db_set_active('lxc');
+   $id = db_insert('image')
+      ->fields(array(
+         'imagename'    =>$data['name'],
+         'path'         =>$data['path'],
+         'vtype'        =>$data['virtualtype'],
+         'information'  =>$data['comment'],
+         'architecture' =>$data['architecture'],
+         'command'      =>$data['command'],
+         'status'       => 0,
+      ))
+      ->execute();
+   db_set_active();
+}
+
+/*
+ * Callback to get images
+ */
+
+function hardin_getimages_callback() {
+   db_set_active('lxc');
+   $result = db_query("SELECT * FROM {image} i");
+   db_set_active();
+
+   $rows = array();
+
+   foreach ($result as $row) {
+      $rows[] = array(
+         $row->imageid,
+         $row->imagename,
+         $row->path,
+         $row->vtype,
+         $row->information,
+         $row->architecture,
+         $row->command,
+         $row->status,
+      );
+   }
+
+   $output = array();
+   $output['data'] = array();
+   $output['data'] = $rows;
+
+   echo json_encode($rows);
+}
+
+function hardin_load_libraries() {
+   drupal_add_css(drupal_get_path('module', 'hardin') . '/css/styles.css');
+   drupal_add_css(drupal_get_path('module', 'hardin') . '/css/highcharts.css');
+   drupal_add_js(libraries_get_path('Highcharts') . '/code/js/highcharts.js');
+   drupal_add_js(libraries_get_path('Highcharts') . '/code/js/modules/exporting.js');
+
+   //drupal_add_css(libraries_get_path('DataTables-1.10.12') . '/media/css/dataTables.bootstrap.css');
+   drupal_add_css(libraries_get_path('DataTables') . '/media/css/dataTables.foundation.css');
+   drupal_add_js(libraries_get_path('DataTables') . '/media/js/jquery.dataTables.js');
+
+   drupal_add_js(drupal_get_path('module', 'hardin') . '/js/getimage.js');
+}

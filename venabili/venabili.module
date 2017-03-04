@@ -1,0 +1,647 @@
+<?php
+
+function venabili_menu() {
+   $items = array();
+
+   //$items['Manage'] = array(
+   $items['Venabili'] = array(
+      'title'              => 'Probe Manager',
+      'page callback'      => 'drupal_get_form',
+      'page arguments'     => array('venabili_get_form'),
+      'description'        => 'Manage data',
+      'menu_name'          => 'main-menu',
+      'type'               => MENU_NORMAL_ITEM,
+      'access arguments'   => array('access venabili content'),
+   );
+
+   /*$items['GetProbe'] = array(
+      'title'              => 'List probes CDPWeather',
+      'page callback'      => '_getprobes_callback',
+      'page arguments'     => array(),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access venabili content'),
+   );*/
+
+   $items['VenabiliGetProbe'] = array(
+      'title'              => 'List probes CDPWeather',
+      'page callback'      => 'venabili_getprobes_callback',
+      'page arguments'     => array(),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access venabili content'),
+   );
+
+
+   $items['EditProbe/%'] = array(
+      'title'              => 'Edit probes CDPWeather',
+      'page callback'      => 'drupal_get_form',
+      'page arguments'     => array('venabili_edit_form', 1),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access venabili content'),
+   );
+
+   $items['Bandwidth'] = array(
+      'page callback'      => '_Venabili_bandwidth_request',
+      'page arguments'     => array(),
+      'type'               => MENU_CALLBACK,
+      'file'               => 'venabili.inc',
+      'access arguments'   => array('access venabili content'),
+   );
+
+   $items['VenabiliLocationRequest'] = array(
+      'page callback'      => '_Venabili_location_request',
+      'page arguments'     => array(),
+      'type'               => MENU_CALLBACK,
+      'file'               => 'venabili.inc',
+      'access arguments'   => array('access venabili content'),
+   );  
+
+   return $items;
+}
+
+function venabili_permission() {
+   return array(
+      'access venabili content' => array(
+         'title' => t('Access content Dors Venabili module'),
+         'description' => t('Allow users to access the Dors Venabili'),
+      ));
+}
+
+function venabili_edit_form($form, &$form_state, $data) {
+   venabili_load_libraries();
+
+   $_SESSION['probe'] = $data;
+   $container = uniqid();
+
+   //$settings = array('containers' => $containers);
+   //drupal_add_js(array('seldon' => $settings), 'setting');
+
+   $urls_included       = isset($_SESSION['probe']) ? _get_included_url() : array();
+   $urls_not_included   = isset($_SESSION['probe']) ? _get_not_included_url() : array();
+
+   $status_list = isset($_SESSION['probe']) ? _get_status_list() : array();
+
+   $information = array( 'container' => $container, 'probe' => $_SESSION['probe']);
+   $settings = array('container' => $information);
+   drupal_add_js(array('bandwidthcmd' => $settings), 'setting');
+
+   $form['search'] = array(
+      '#type'     => 'fieldset',
+      '#title'    => t('Show bandwidth on '. $data),
+      '#prefix'   => '<div id="bandwidth">',
+      '#suffix'   => '</div>',
+   );
+
+   $form['search']['bandwidth'] = array(
+      '#markup'   => '<div id="'. $container .'"></div>',
+   );
+
+   $form['url'] = array(
+      '#type'  => 'fieldset',
+      '#title' => t('Manage the URLs on '. $data),
+      '#prefix'   => '<div id="manageid">',
+      '#suffix'   => '</div>',
+   );
+
+
+   $form['url']['included'] = array(
+      '#type'     => 'select',
+      '#options'  => $urls_included,
+      '#multiple' => TRUE,
+      '#title'    => t('Included in ' . $data),
+      '#prefix'   => '<div id="includedid">',
+      '#suffix'   => '</div>',
+      '#size'     => 10,
+      //'#default_value' => isset($form_state['values']['url']) ? $form_state['values']['url'] : '',
+   );
+
+   $form['url']['not_included'] = array(
+      '#type'     => 'select',
+      '#options'  => $urls_not_included,
+      '#multiple' => TRUE,
+      '#title'    => t('Not included in ' . $data) ,
+      '#prefix'   => '<div id="notincludedid">',
+      '#suffix'   => '</div>',
+      '#size'     => 10,
+      //'#default_value' => isset($form_state['values']['url']) ? $form_state['values']['url'] : '',
+   );
+
+   $form['status'] = array(
+      '#type'  => 'fieldset',
+      '#title' => t('Manage the Status on '. $data),
+      '#prefix'   => '<div id="statusid">',
+      '#suffix'   => '</div>',
+   );
+
+
+   $form['status']['probestatus'] = array(
+      '#type'     => 'select',
+      '#options'  => $status_list,
+      '#title'    => t('Status choice for ' . $data),
+      '#prefix'   => '<div id="statuschoiceid">',
+      '#suffix'   => '</div>',
+      //'#size'     => 10,
+      //'#default_value' => isset($form_state['values']['url']) ? $form_state['values']['url'] : '',
+   );
+
+
+   $form['status']['modifystatus'] = array(
+      '#type'        => 'submit',
+      '#value'       => t('Status update'),
+      '#submit'      => array('venabili_modify_status_submit'),
+      '#prefix'      => '<div id="submitid">',
+      '#suffix'      => '</div>',
+   );
+
+
+   /*
+    * Probe status is represents by 4 states
+    * posted means that the probe has been post to the service
+    * received means that the probe was received but not connected
+    * plugged means that the probe is connected and is working
+    * disconnected means that the probe has a problem
+    * decommisionned means that the probe does not work anymore
+    */
+
+   $output = '<p>Probe status is represents by <strong>5</strong> states</p>';
+   $output .= '<strong style="color:#3366FF">posted</strong> means that the probe has been posted to the service (next: <em style="color:#CC3399">received</em>)<br/>';
+   $output .= '<strong style="color:#CC3399">received</strong> means that the probe was received but not connected (next: <em style="color:#009933">plugged</em> or <em style="color:#666699">decommisionned</em>)<br/>';
+   $output .= '<strong style="color:#009933">plugged</strong> means that the probe is connected and is working (next: <em style="color:#FF0066">disconnected</em>)<br/>';
+   $output .= '<strong style="color:#FF0066">disconnected</strong> means that the probe has a problem (next: <em>plugged</em> or <em style="color:#666699">decommisionned</em>)<br/>';
+   $output .= '<strong style="color:#666699">decommisionned</strong> means that the probe does not work anymore (next: <em style="color:#CC3399">received</em>)';
+
+
+   $form['status']['information'] = array(
+      '#markup'   => $output,
+      '#prefix'   => '<div id="informationid">',
+      '#suffix'   => '</div>',
+   );
+
+
+   /*$form['url']['information'] = array(
+      '#markup'  => '<p>Period, Start and Delay define <br/>parameters of CDP Weather <br/>'. $data .'</p>',
+      '#prefix'   => '<div id="infoparameterid">',
+      '#suffix'   => '</div>',
+   ); */
+
+   /*$form['url']['period'] = array(
+      '#type' => 'slider',
+      '#title' => 'Period',
+      '#max' => 3600,
+      '#min' => 0,
+      '#orientation' => 'vertical',
+      '#range' => 'min',
+      '#step' => 1,
+      '#default_value' => 1800,
+      '#slider_style' => 'blue',
+      '#display_inputs' => TRUE,
+      '#display_values' => FALSE,
+      '#display_values_format' => '%{value}%',
+      '#slider_length' => NULL,
+      '#prefix' => '<div id="periodid">',
+      '#suffix' => '</div>',
+   );
+
+   $form['url']['start'] = array(
+      '#type' => 'slider',
+      '#title' => 'Start',
+      '#max' => 3600,
+      '#min' => 0,
+      '#orientation' => 'vertical',
+      '#range' => 'min',
+      '#step' => 1,
+      '#default_value' => 1800,
+      '#slider_style' => 'blue',
+      '#display_inputs' => TRUE,
+      '#display_values' => FALSE,
+      '#display_values_format' => '%{value}%',
+      '#slider_length' => NULL,
+      '#prefix' => '<div id="periodid">',
+      '#suffix' => '</div>',
+   );
+
+   $form['url']['delay'] = array(
+      '#type' => 'slider',
+      '#title' => 'Delay',
+      '#max' => 3600,
+      '#min' => 0,
+      '#orientation' => 'vertical',
+      '#range' => 'min',
+      '#step' => 1,
+      '#default_value' => 1800,
+      '#slider_style' => 'blue',
+      '#display_inputs' => TRUE,
+      '#display_values' => FALSE,
+      '#display_values_format' => '%{value}%',
+      '#slider_length' => NULL,
+      '#prefix' => '<div id="periodid">',
+      '#suffix' => '</div>',
+   );*/
+
+   $form['url']['modifyurl'] = array(
+      '#type'        => 'submit',
+      '#value'       => t('URL update'),
+      '#submit'      => array('venabili_modify_urls_submit'),
+      '#prefix'      => '<div id="submitid">',
+      '#suffix'      => '</div>',
+   );
+
+   $output = 'These lists include URLs selected to the analyse of the <br/>';
+   $output .= 'delivery, more exactly all the ip addresses linked to the objects <br/>';
+   $output .= 'composing the web page like images of script.<br/>';
+   $output .= 'To <strong>add</strong> or/and <strong>delete</strong> URLS, simply select them and click on the button';
+
+   $form['url']['information'] = array(
+      '#markup'   => $output,
+      '#prefix'   => '<div id="informationid">',
+      '#suffix'   => '</div>',
+   );
+
+
+
+   $form['dns'] = array(
+      '#type'  => 'fieldset',
+      '#title' => t('Manage the DNS on '. $data),
+      '#prefix'      => '<div id="dnsid">',
+      '#suffix'      => '</div>',
+   );
+
+   $form['dns']['information'] = array(
+      '#markup'  => '<p>You \'re going to modify the DNS of the probe '. $data .'</p>',
+   );
+
+   $form['dns']['new_dns'] = array(
+      '#type' => 'textfield',
+      '#title' => t('the new DNS address'),
+      '#attributes' => array(
+         'placeholder' => t('Enter a new address or leave this field empty to erase the new DNS address'),
+      ),
+   );
+
+   $form['dns']['modifydns'] = array(
+      '#type'        => 'submit',
+      '#value'       => t('DNS update'),
+      '#submit'      => array('venabili_modify_dns_submit'),
+      '#prefix'      => '<div id="submitid">',
+      '#suffix'      => '</div>',
+   );
+
+   return $form;
+}
+
+function venabili_modify_urls_submit($form, &$form_state) {
+   //dsm('Hello url');
+   _modify_urls($form, $form_state);
+
+   $form_state['rebuild']=TRUE;
+}
+
+function venabili_modify_status_submit($form, &$form_state) {
+   _modify_status($form, $form_state);
+
+   $form_state['rebuild']=TRUE;
+}
+
+function venabili_modify_dns_submit($form, &$form_state) {
+   //dsm('Hello dns');
+   _modify_dns($form, $form_state);
+
+   $form_state['rebuild']=TRUE;
+}
+
+function _modify_urls($form, $form_state) {
+   if (isset($_SESSION['probe'])) {
+      db_set_active('cdpweather');
+      $result = db_query("select * from {new_v4_sonde} s where s.probename = :name", array(':name' => $_SESSION['probe']));
+      db_set_active();
+
+      foreach($result as $probe) {
+         if (isset($form_state['values']['not_included'])) {
+            foreach($form_state['values']['not_included'] as $url) {
+               db_set_active('cdpweather');
+               db_query("insert into {new_v4_fqdnuser} (urlid,probeid,status) select u.urlid, :probeid, 1 from {new_v4_url} u where u.urlname = :urlname", array(':urlname' => $url, ':probeid' => $probe->probeid));
+               db_set_active();
+            }
+         }
+         if (isset($form_state['values']['included'])) {
+            foreach($form_state['values']['included'] as $url) {
+               db_set_active('cdpweather');
+               $resulturl = db_query("select u.urlid from {new_v4_url} u where u.urlname = :urlname",array(':urlname' => $url)); 
+               db_set_active();
+               foreach($resulturl as $item) {
+                  db_set_active('cdpweather');
+                  db_query("delete from {new_v4_fqdnuser} where probeid = :probeid and urlid = :urlid", array(':probeid' => $probe->probeid, ':urlid' => $item->urlid));
+                  db_set_active();
+               }
+            }
+         }
+      }
+   }
+}
+
+function _modify_status($form, $form_state) {
+   $status = array("posted", "received", "plugged", "disconnected", "decommissioned");
+
+   if (isset($_SESSION['probe'])) {
+      db_set_active('cdpweather');
+      $result = db_query("SELECT * FROM {new_v4_sonde} s where s.probename = :name", array(':name' => $_SESSION['probe']));
+      db_set_active();
+
+      foreach($result as $probe) {
+         if (isset($form_state['values']['probestatus'])) {
+            $newstatus = array_keys($status,$form_state['values']['probestatus']);
+            db_set_active('cdpweather');
+            db_query("UPDATE {new_v4_sonde} SET status = :newstatus WHERE probename = :probename", array(':newstatus' => $newstatus, ':probename' => $_SESSION['probe']));
+            db_set_active();
+         }
+      }
+   }
+}
+
+function _modify_dns($form, $form_state) {
+   $newdns = $form_state['values']['new_dns'];
+   if (!filter_var($newdns, FILTER_VALIDATE_IP) === false or $newdns == '') {
+      if (isset($_SESSION['probe'])) {
+         db_set_active('cdpweather');
+         db_query("update {new_v4_sonde} set newdns = :newdns where probename = :probename", array(':newdns' => $newdns, ':probename' => $_SESSION['probe']));
+         db_set_active();
+      }
+   }
+}
+
+function venabili_get_form($form, &$form_state) {
+   venabili_load_libraries();
+
+   $form['description'] = array(
+      '#type' => 'item',
+      '#title' => t('Propose to manage probes on CDPWeather'),
+   );
+
+   /*$form['search'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Searching the true'),
+   );
+
+   $header = array(
+      'probename' => t('name'),
+      'ip'        => t('ip'),
+      'ext'       => t('ext'),
+      'dns'       => t('dns'),
+      'newdns'    => t('new dns'),
+      'uptime'    => t('uptime'),
+      'lasttime'  => t('lasttime'),
+      'mac'       => t('mac'),
+      'cc'        => t('cc'),
+      'version'   => t('version'),
+   );
+
+   $rows = _getprobes_callback();
+
+   $form['search']['table'] = array(
+      '#type'     => 'tableselect',
+      '#js_select'=> FALSE,
+      '#header'   => $header,
+      '#options'  => $rows,
+      '#multiple' => FALSE,
+      '#disabled' => TRUE,
+      '#empty'    => t('No content available.'),
+   );*/
+
+   $form['manage'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Manage probes'),
+   );
+
+
+   $html  = '<table id="tableprobe" class="display" width="100%" cellspacing="0">';
+   $html .= '<thead>';
+   $html .= '<tr>';
+   $html .= '<th>Name</th>';
+   $html .= '<th>Ip</th>';
+   $html .= '<th>Ext</th>';
+   $html .= '<th>Dns</th>';
+   $html .= '<th>New Dns</th>';
+   $html .= '<th>Uptime</th>';
+   $html .= '<th>Firsttime</th>';
+   $html .= '<th>Lasttime</th>';
+   $html .= '<th>Mac</th>';
+   $html .= '<th>CC</th>';
+   $html .= '<th>Version</th>';
+   $html .= '<th>Status</th>';
+   $html .= '</tr>';
+   $html .= '</thead>';
+   //$html .= '<tfoot>';
+   //$html .= '<th>Name</th>';
+   //$html .= '<th>Ip</th>';
+   //$html .= '<th>Ext</th>';
+   //$html .= '<th>Dns</th>';
+   //$html .= '<th>New Dns</th>';
+   //$html .= '<th>Uptime</th>';
+   //$html .= '<th>Firsttime</th>';
+   //$html .= '<th>Lasttime</th>';
+   //$html .= '<th>Mac</th>';
+   //$html .= '<th>CC</th>';
+   //$html .= '<th>Version</th>';
+   //$html .= '<th>Status</th>';
+   //$html .= '</tfoot>';
+   $html .= '</table>';
+
+   drupal_add_js(drupal_get_path('module', 'venabili') . '/js/tableprobe.js');
+
+   drupal_add_js(drupal_get_path('module', 'venabili') . '/js/location.js');
+
+   $form['manage']['tableprobe'] = array(
+      '#markup'   => '<div id="tableprobeid">' . $html . '</div>',
+   );
+
+
+   $form['status'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Location'),
+   );
+
+   $form['status']['live'] = array(
+      '#markup'   => '<div id="location"></div>',
+   );
+
+
+   //drupal_add_js(array('venabili' => array('container' => $container)), array('type' => 'setting'));
+
+   return $form;
+}
+
+function _editprobes_callback($data) {
+   echo "$data";
+}
+
+function venabili_getprobes_callback() {
+   global $user;
+   $userId = $user->uid;
+
+   db_set_active('cdpweather');
+   $result = db_query("SELECT s.probename, s.ip, s.ext, s.dns, s.newdns, s.uptime, from_unixtime(s.firsttime) as firsttime, from_unixtime(s.lasttime) as lasttime, s.mac, s.cc, s.version , s.status FROM {new_v4_sonde} s inner join {new_v4_users_probes_edit} u on s.probeid = u.probeid where u.userid = :userid", array(':userid' => $userId));
+   db_set_active();
+
+   $rows = array();
+   $rowsbis = array();
+
+   foreach ($result as $row) {
+      //$rows[] =  json_decode(json_encode($row), True);
+      //drupal_get_message(print_r($rows, TRUE), 'warning');
+      $status = array("posted", "received", "plugged", "disconnected", "decommissioned");
+
+      $firsttime = explode(" ", $row->firsttime);
+      $lasttime = explode(" ", $row->lasttime);
+      $rows[] = array(
+         l($row->probename,'EditProbe/'. $row->probename),
+         l($row->ip,       'EditProbe/'. $row->probename),
+         l($row->ext,      'EditProbe/'. $row->probename),
+         l($row->dns,      'EditProbe/'. $row->probename),
+         l($row->newdns,   'EditProbe/'. $row->probename),
+         l($row->uptime,   'EditProbe/'. $row->probename),
+         l($firsttime[0],  'EditProbe/'. $row->probename),
+         l($lasttime[0],   'EditProbe/'. $row->probename),
+         l($row->mac,      'EditProbe/'. $row->probename),
+         l($row->cc,       'EditProbe/'. $row->probename),
+         l($row->version,  'EditProbe/'. $row->probename),
+         $status[$row->status],
+      );
+
+   }
+
+   $output = array();
+   $output['data'] = array();
+   $output['data'] = $rows;
+
+   echo json_encode($rows);
+}
+
+/*function _getprobes_callback() {
+   global $user;
+   $userId = $user->uid;
+
+   db_set_active('cdpweather');
+   $result = db_query("SELECT s.probename, s.ip, s.ext, s.dns, s.newdns, s.uptime, s.lasttime, s.mac, s.cc, s.version  FROM {new_v4_sonde} s inner join {new_v4_users_probes_edit} u on s.probeid = u.probeid where u.userid = :userid", array(':userid' => $userId));
+   db_set_active();
+
+   $rows = array();
+
+   foreach ($result as $row) {
+      //$rows[] =  json_decode(json_encode($row), True);
+      //drupal_get_message(print_r($rows, TRUE), 'warning');
+      $rows[] = array(
+         'probename' => l($row->probename, 'EditProbe/'. $row->probename),
+         'ip'        => $row->ip,
+         'ext'       => $row->ext,
+         'dns'       => $row->dns,
+         'newdns'    => $row->newdns,
+         'uptime'    => $row->uptime,
+         'lasttime'  => $row->lasttime,
+         'mac'       => $row->mac,
+         'cc'        => $row->cc,
+         'version'   => $row->version,
+      );
+   }
+
+   return $rows;
+   //print_r($rows);
+}*/
+
+function venabili_load_libraries() {
+   drupal_add_css(drupal_get_path('module', 'venabili') . '/css/styles.css');
+   drupal_add_css(drupal_get_path('module', 'venabili') . '/css/highcharts.css');
+   // drupal_add_js(drupal_get_path('module', 'venabili') . '/js/location.js');
+   // drupal_add_js(drupal_get_path('module', 'venabili') . '/js/loadtime.js');
+
+   //drupal_add_css(libraries_get_path('DataTables-1.10.13') . '/media/css/dataTables.bootstrap.css');
+   drupal_add_css(libraries_get_path('DataTables') . '/media/css/dataTables.foundation.css');
+   drupal_add_js(libraries_get_path('DataTables') . '/media/js/jquery.dataTables.js');
+   // drupal_add_js(drupal_get_path('module', 'venabili') . '/js/tableprobe.js');
+
+
+   drupal_add_js(libraries_get_path('Highcharts')  . '/code/js/highcharts.js');
+   //drupal_add_css(libraries_get_path('Highcharts-5.0.5') . '/code/themes/gray.js');
+   drupal_add_js(libraries_get_path('Highmaps')    . '/code/js/modules/map.js');
+   drupal_add_js(libraries_get_path('Highcharts') . '/code/js/modules/exporting.js');
+   drupal_add_js('https://code.highcharts.com/mapdata/custom/world-highres.js', 'external');
+}
+
+//********************************************************************//
+
+function _get_status_list() {
+   $list_status = array();
+
+   if(isset($_SESSION['probe'])) {
+      db_set_active('cdpweather');
+      $result = db_query("SELECT s.status FROM {new_v4_sonde} s WHERE s.probename = :name", array(':name' => $_SESSION['probe']));
+      db_set_active();
+
+      $status = array("posted", "received", "plugged", "disconnected", "decommissioned");
+
+      foreach($result as $item) {
+         if ($item->status == 0) {
+            $list_status[] = "received";
+            $list_status[] = "decommissioned";
+         } else if ($item->status == 1) {
+            $list_status[] = "plugged";
+            $list_status[] = "decommissioned";
+         } else if ($item->status == 3) {
+            $list_status[] = "decommissioned";
+         } else if ($item->status == 4) {
+            $list_status[] = "received";
+         } else {
+            $list_status[] = $status[$item->status];
+         } 
+      }
+   }
+
+   return drupal_map_assoc($list_status);
+}
+
+function _get_included_url() {
+   $list_url = array();
+
+   if(isset($_SESSION['probe'])) {
+      db_set_active('cdpweather');
+      $result = db_query("SELECT u.urlname FROM {new_v4_url} u inner join {new_v4_fqdnuser} f on u.urlid = f.urlid inner join {new_v4_sonde} s on f.probeid = s.probeid where s.probename = :name order by urlname", array(':name' => $_SESSION['probe']));
+      db_set_active();
+
+      foreach($result as $item) {
+         $list_url[] = $item->urlname;
+      }
+   }
+
+   return drupal_map_assoc($list_url);
+}
+
+function _get_not_included_url() {
+   $list_url = array();
+   $included_url = array();
+
+   if(isset($_SESSION['probe'])) {
+      db_set_active('cdpweather');
+      $result = db_query("SELECT u.urlname FROM {new_v4_url} u");
+      db_set_active();
+
+      foreach($result as $item) {
+         $list_url[] = $item->urlname;
+      }
+
+
+      db_set_active('cdpweather');
+      $result = db_query("SELECT u.urlname FROM {new_v4_url} u join {new_v4_fqdnuser} f on u.urlid = f.urlid join {new_v4_sonde} s on f.probeid = s.probeid where s.probename = :name order by urlname", array(':name' => $_SESSION['probe']));
+      db_set_active();
+
+      foreach($result as $item) {
+         $included_url[] = $item->urlname;
+      }
+
+      $not_included_url = array_diff($list_url, $included_url);
+
+      //drupal_set_message(print_r($list_url, TRUE));
+      //drupal_set_message(print_r($included_url, TRUE));
+      //drupal_set_message(print_r($not_included_url, TRUE));
+
+   }
+
+   return drupal_map_assoc($not_included_url);
+}

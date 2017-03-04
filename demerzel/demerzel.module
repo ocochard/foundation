@@ -1,0 +1,91 @@
+<?php
+
+function demerzel_menu() {
+   $items = array();
+
+   $items['Demerzel'] = array(
+      'title'              => 'Graphic Intro',
+      'page callback'      => 'drupal_get_form',
+      'page arguments'     => array('demerzel_form'),
+      'description'        => 'First page',
+      'menu_name'          => 'main-menu',
+      'type'               => MENU_NORMAL_ITEM,
+      'file'               => 'demerzel.inc',
+      'access arguments'   => array('access demerzel content'),
+   );
+
+
+   $items['DemerzelGetHyper'] = array(
+      'title' => 'List hypervisors',
+      'page callback' => 'demerzel_gethypers_callback',
+      'page arguments' => array(),
+      'type' => MENU_CALLBACK,
+      'access arguments' => array('access demerzel content'),
+   );
+
+   return $items;
+}
+
+function demerzel_permission() {
+   return array(
+      'access demerzel content' => array(
+         'title' => t('Access content Eto Demerzel module'),
+         'description' => t('Allow users to access the Eto Demerzel'),
+      ));
+}
+
+function demerzel_gethypers_callback() {
+   $rows = array();
+
+   db_set_active('lxc');
+   $queryhyper = db_select('hypervisor','h')
+      ->fields('h')
+      ->execute();
+   db_set_active();
+
+   foreach($queryhyper as $rowhyper) {
+
+      $result[] = array(
+         $rowhyper->hyperid,
+         $rowhyper->hypername,
+         $rowhyper->cpu,
+         $rowhyper->architecture,
+         $rowhyper->typevirt,
+         $rowhyper->bridge,
+         $rowhyper->totalHD,
+         $rowhyper->useHD, 
+         $rowhyper->totalRAM,
+         $rowhyper->useRAM,
+      );
+   }
+
+   // return $result;
+   echo json_encode($result);
+}
+
+
+function demerzel_form($form, &$form_state) {
+   demerzel_load_libraries();
+
+   $form['status'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Network hypervisors'),
+   );
+
+   $html = "";
+
+   $form['status']['network'] = array(
+      '#markup'   => '<div id="networkid">' . $html . '</div>',
+   );
+
+   return $form;
+}
+
+function demerzel_load_libraries() {
+   drupal_add_js(drupal_get_path('module', 'demerzel') . '/js/location.js');
+
+   drupal_add_js(libraries_get_path('d3') . '/d3.js');
+
+   //https://github.com/almende/vis/archive/v4.18.0.zip
+   //https://github.com/d3/d3/releases/download/v4.4.2/d3.zip
+}

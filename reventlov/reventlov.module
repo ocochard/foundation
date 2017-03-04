@@ -1,0 +1,1680 @@
+<?php
+
+function reventlov_menu() {
+   $items = array();
+
+   $items['Reventlov'] = array(
+      'title'              => 'Hyper Manager',
+      'page callback'      => 'drupal_get_form',
+      'page arguments'     => array('reventlov_get_form'),
+      'description'        => 'Manage hypervisors',
+      'menu_name'          => 'main-menu',
+      'type'               => MENU_NORMAL_ITEM,
+      'access arguments'   => array('access revenlov content'),
+   );
+
+   $items['ReventlovGetHyper'] = array(
+      'title'              => 'List hypervisors',
+      'page callback'      => 'reventlov_gethypers_callback',
+      'page arguments'     => array(),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access reventlov content'),
+   );
+
+   $items['ReventlovGetImage/%'] = array(
+      'title'              => 'List images',
+      'page callback'      => 'reventlov_getimages_callback',
+      'page arguments'     => array(1),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access reventlov content'),
+   );
+
+   $items['ReventlovGetProfile'] = array(
+      'title'              => 'List profiles',
+      'page callback'      => 'reventlov_getprofiles_callback',
+      'page arguments'     => array(),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access reventlov content'),
+   );
+
+   $items['CloneImage/%'] = array(
+      'page callback'      => 'drupal_get_form',
+      'page arguments'     => array('reventlov_clone_form', 1),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access reventlov content'),
+      'file'               => 'reventlov.inc',
+   );
+
+   $items['EditHyper/%'] = array(
+      'page callback'      => 'drupal_get_form',
+      'page arguments'     => array('reventlov_edit_form', 1),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access reventlov content'),
+      'file'               => 'reventlov.inc',
+   );
+
+   $items['ListContainers/%'] = array(
+      'title'              => 'List containers',
+      'page callback'      => 'reventlov_getcontainers_callback',
+      'page arguments'     => array(1),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access reventlov content'),
+      'file'               => 'reventlov.inc',
+   );
+
+    /*$items['ListContainersofcontainer/%'] = array(
+        'title'              => 'List containers',
+        'page callback'      => 'reventlov_getcontainers_of_container_callback',
+        'page arguments'     => array(1),
+        'type'               => MENU_CALLBACK,
+        'access arguments'   => array('access reventlov content'),
+        'file'               => 'reventlov.inc',
+    );*/
+
+   $items['EditContainer/%'] = array(
+      'page callback'      => 'drupal_get_form',
+      'page arguments'     => array('reventlov_edit_container_form', 1),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access reventlov content'),
+      'file'               => 'reventlov.inc',
+   );
+
+   $items['GetLoadHyper/%'] = array(
+      'title'              => 'List containers',
+      'page callback'      => 'reventlov_getloadhyper_callback',
+      'page arguments'     => array(1),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access reventlov content'),
+      'file'               => 'reventlov.inc',
+   );
+
+   $items['GetLoadContainer/%'] = array(
+      'title'              => 'List containers',
+      'page callback'      => 'reventlov_getloadcontainer_callback',
+      'page arguments'     => array(1),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access reventlov content'),
+      'file'               => 'reventlov.inc',
+   );
+
+   return $items;
+}
+
+function revenlov_permission() {
+   return array(
+      'access revenlov content' => array(
+         'title' => t('Access content Revenlov module'),
+         'description' => t('Allow users to access the Revenlov'),
+      ));
+}
+
+function reventlov_getloadcontainer_callback($id) {
+   date_default_timezone_set('Europe/Paris');
+   $datenow = new DateTime();
+   $datenow->sub(new DateInterval('P2D'));
+   $dnow = $datenow ->getTimestamp();
+
+   $tmp = array() ;
+
+   db_set_active('lxc');
+   $result = db_query("SELECT * FROM {containerusage} c WHERE c.containerid = :containerid AND c.time > :time", array(':containerid' => $id, ':time' => $dnow));
+   db_set_active();
+
+   $serie = array();
+   $serie_e = array();
+   $serie_e['data'] = array();
+   $serie_e['yAxis'] = 0;
+   $serie_e['name'] = 'cputime';
+
+   $serie_f = array();
+   $serie_f['data'] = array();
+   $serie_f['yAxis'] = 1;
+   $serie_f['name'] = 'memory';
+   
+   $serie_g = array();
+   $serie_g['data'] = array();
+   $serie_g['yAxis'] = 0;
+   $serie_g['name'] = 'tx';
+   
+   $serie_h = array();
+   $serie_h['data'] = array();
+   $serie_h['yAxis'] = 1;
+   $serie_h['name'] = 'rx';
+
+
+
+   $e = array();
+   $f = array();
+   $g = array();
+   $h = array();
+
+   foreach ($result as $row) {
+      $e['x'] = intval($row->time);
+      $e['y'] = intval($row->cputime);
+      $serie_e['data'][] = $e;
+
+      $f['x'] = intval($row->time);
+      $f['y'] = intval($row->memory);
+      $serie_f['data'][] = $f;
+
+      $g['x'] = intval($row->time);
+      $g['y'] = intval($row->tx);
+      $serie_g['data'][] = $g;
+
+      $h['x'] = intval($row->time);
+      $h['y'] = intval($row->rx);
+      $serie_h['data'][] = $h;
+
+
+   }
+
+   $serie['cputime'] = $serie_e;
+   $serie['memory']  = $serie_f;
+   $serie['tx']      = $serie_g;
+   $serie['rx']      = $serie_h;
+
+   echo json_encode($serie);
+}
+
+
+
+function reventlov_getloadhyper_callback($id) {
+   $datenow = new DateTime();
+   $datenow->sub(new DateInterval('P2D'));
+   $dnow = $datenow ->getTimestamp();
+
+   $tmp = array() ;
+
+   //$query="SELECT * FROM {hypervisorusage} h WHERE h.hyperid = " . $id . " AND h.time > " . $dnow;
+   //echo $query;
+   db_set_active('lxc');
+   $result = db_query("SELECT * FROM {hypervisorusage} h WHERE h.hyperid = :hyperid AND h.time > :time", array(':hyperid' => $id, ':time' => $dnow));
+   //$result = db_query($query);
+   db_set_active();
+
+   $serie = array();
+   $serie_e = array();
+   $serie_e['data'] = array();
+   $serie_e['yAxis'] = 0;   
+   $serie_e['name'] = 'useHD';
+   $serie_f = array();
+   $serie_f['data'] = array();
+   $serie_f['yAxis'] = 1;   
+   $serie_f['name'] = 'useRAM';
+
+   $e = array();
+   $f = array();
+
+   foreach ($result as $row) {
+      /*$tmp[$row->time] = array(
+         'time'      => $row->time,
+         'totalHD'   => $row->totalHD,
+         'useHD'     => $row->useHD,
+         'totalRAM'  => $row->totalRAM,
+         'useRAM'    => $row->useRAM
+      );*/
+      $e['x'] = intval($row->time);
+      $e['y'] = intval($row->useHD);
+      //$e['z'] = $row->totalHD;
+
+      $serie_e['data'][] = $e; 
+
+      $f['x'] = intval($row->time);
+      $f['y'] = intval($row->useRAM);
+      //$f['z'] = $row->totalRAM;
+      $serie_f['data'][] = $f; 
+   }
+
+   $serie[] = $serie_e;
+   $serie[] = $serie_f;
+
+   echo json_encode($serie);
+}
+
+
+function reventlov_getcontainers_of_container_callback($id) {}
+
+function reventlov_getcontainers_callback($id) {
+   //drupal_set_message('<pre>#' . $dnow. '</pre>' );
+
+   db_set_active('lxc');
+   //$querycontainer = db_query("SELECT * FROM {container} c WHERE c.hyperid = :hyperid", array(':hyperid' => $id));
+   $querycontainer = db_select('container','c')
+      ->fields('c')
+      ->condition('status','2','<')
+      ->condition('hyperid',$id,'=')
+      ->execute();
+   db_set_active();
+
+   $rows = array();
+
+   foreach ($querycontainer as $rowcontainer) {
+      //echo $rowcontainer->imageid;  
+
+      //drupal_set_message('<pre>#' . $rowcontainer. '</pre>' );
+      db_set_active('lxc');
+      $queryimage = db_select('image', 'i')
+         ->fields('i')
+         ->condition('imageid',$rowcontainer->imageid)
+         ->execute();
+      db_set_active();
+
+      //drupal_set_message('<pre>' . print_r($queryimage, true) . '</pre>');
+      foreach($queryimage as $rowimage) {
+
+         //echo "hyperid -> $rowcontainer->hyperid";  
+         //echo "<br/>";
+
+         db_set_active('lxc');
+         $queryhyper = db_select('hypervisor', 'h')
+            ->fields('h')
+            ->condition('hyperid',$rowcontainer->hyperid)
+            ->execute();
+         db_set_active();
+
+         foreach($queryhyper as $rowhyper) {
+            //drupal_set_message('<pre>#' . $rowhyper . '</pre>' );
+            //
+            //echo "containerid -> $rowcontainer->containerid";  
+            //echo "<br/>";
+
+            $rows[] = array(
+               //$row->containerid,
+               /*'',
+               l($rowcontainer->containerid,'EditContainer/'.$rowcontainer->containerid),
+               l($rowcontainer->containername,'EditContainer/'.$rowcontainer->containerid),
+               l($rowhyper->hypername,'EditContainer/'.$rowcontainer->containerid),
+               l($rowimage->imagename,'EditContainer/'.$rowcontainer->containerid),
+               l($rowimage->architecture,'EditContainer/'.$rowcontainer->containerid),
+               l($rowcontainer->dns,'EditContainer/'.$rowcontainer->containerid),
+               l($rowcontainer->extip,'EditContainer/'.$rowcontainer->containerid),
+               l($rowcontainer->intip,'EditContainer/'.$rowcontainer->containerid),
+               l($rowcontainer->status,'EditContainer/'.$rowcontainer->containerid),*/
+               //''
+
+               '',
+               $rowcontainer->containerid,
+               $rowcontainer->containername,
+               $rowhyper->hypername,
+               $rowimage->imagename,
+               $rowimage->architecture,
+               $rowcontainer->bridge,
+               $rowcontainer->dns,
+               $rowcontainer->extip,
+               $rowcontainer->intip,
+               $rowcontainer->crontab,
+               $rowcontainer->status,
+
+            );
+
+         }
+      }
+   }
+
+   //drupal_set_message('<pre>' . print_r($row, true) . '</pre>');
+
+   //$output = array();
+   //$output['data'] = array();
+   //$output['data'] = $rows;
+
+   echo json_encode($rows);
+}
+
+function reventlov_edit_container_form($form, $form_state, $data) {
+   revenlov_load_libraries();
+
+   $_SESSION['reventlov']['container'] = $data;
+
+   $form['network'] = array(
+      '#type'  => 'item',
+      '#title' => t('Networks connected on container ' . $data),
+   );
+
+   $form['container'] = array(
+      '#type'  => 'item',
+      '#title' => t('container ' . $data),
+   );
+
+   //$settings = array('hyperid' => $data);
+   //drupal_add_js(array('reventlov' => $settings), 'setting');
+
+
+   $html  = '<table id="tablecontainer" class="display" width="100%" cellspacing="0">';
+   $html .= '<thead>';
+   $html .= '<tr>';
+   $html .= '<th>select</th>';
+   $html .= '<th>containerid</th>';
+   $html .= '<th>containername</th>';
+   $html .= '<th>hyper</th>';
+   $html .= '<th>image</th>';
+   //$html .= '<th>networkid</th>';
+   $html .= '<th>arch</th>';
+   $html .= '<th>bridge</th>';
+   $html .= '<th>dns</th>';
+   $html .= '<th>extip</th>';
+   $html .= '<th>intip</th>';
+   $html .= '<th>crontab</th>';
+   $html .= '<th>status</th>';
+   //$html .= '<th>button</th>';
+   $html .= '</tr>';
+   $html .= '</thead>';
+   $html .= '</table>';
+
+   $form['container']['tablecontainer'] = array(
+      '#markup'   => '<div id="tablecontainerid">' . $html . '</div>',
+   );
+
+   $form['container']['file'] = array(
+      '#type'           => 'file',
+      '#prefix'         => '<div id="fileid">',
+      '#suffix'         => '</div>',
+      '#value'          => 'Select your file',
+      '#default_value'  => isset($form_state['values']['file']) ? $form_state['values']['file'] : array(),
+      '#title'          => t('New Containers'),
+      '#states' => array(
+         'visible' => array(
+            ':input[name="network"]' => array('value' => 'multidns'),
+         ),
+      ),
+   );
+
+
+   return $form;
+}
+
+function reventlov_edit_form($form, $form_state, $data) {
+   revenlov_load_libraries();
+
+   $_SESSION['reventlov']['hypervisor'] = $data;
+
+   $form['hypervisor'] = array(
+      '#type'  => 'item',
+      '#title' => t('hypervisor LXC-Docker'),
+   );
+
+
+   //drupal_set_message($form_state['values']);
+
+   $option = array();
+   $option = reventlov_getimages();
+
+   $form['image'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Image list to clone on '. $data),
+   );
+
+   $html  = '<table id="tableimage" class="display" width="100%" cellspacing="0">';
+   $html .= '<thead>';
+   $html .= '<tr>';
+   $html .= '<th>imageid</th>';
+   $html .= '<th>imagename</th>';
+   $html .= '<th>path</th>';
+   $html .= '<th>virtualtype</th>';
+   $html .= '<th>information</th>';
+   $html .= '<th>architecture</th>';
+   $html .= '<th>clone</th>';
+   $html .= '</tr>';
+   $html .= '</thead>';
+   $html .= '</table>';
+
+   $output = 'Select one of these <strong style="color:#3366FF"> images </strong> belong.</br>';
+   $output .= 'Only adapted <strong style="color:#3366FF"> images </strong> are proposed ';
+   $output .= 'depending your hypervisor (<strong style="color:#3366FF"> architecture, virtual technology </strong>)';
+   $output .= '<br/><br/>';
+
+   $form['image']['information'] = array(
+      '#markup'      => $output,
+      '#prefix'      => '<div id="informationid">',
+      '#suffix'      => '</div>',
+   );
+
+   $form['image']['tableimage'] = array(
+      '#markup'   => '<div id="tableimageid">' . $html . '</div>',
+   );
+
+   $form['hyper'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Container list to consult on '. $data),
+   );
+
+   $html  = '<table id="tablecontainer" class="display" width="100%" cellspacing="0">';
+   $html .= '<thead>';
+   $html .= '<tr>';
+   $html .= '<th>select</th>';
+   $html .= '<th>containerid</th>';
+   $html .= '<th>containername</th>';
+   $html .= '<th>hyper</th>';
+   $html .= '<th>image</th>';
+   $html .= '<th>arch</th>';
+   $html .= '<th>bridge</th>';
+   $html .= '<th>dns</th>';
+   $html .= '<th>extip</th>';
+   $html .= '<th>intip</th>';
+   $html .= '<th>crontab</th>';
+   $html .= '<th>status</th>';
+   $html .= '</tr>';
+   $html .= '</thead>';
+   $html .= '</table>';
+
+   $form['hyper']['tablecontainer'] = array(
+      '#markup'   => '<div id="tablecontainerid">' . $html . '</div>',
+   );
+
+   $form['hyper']['hiddenfield'] = array(
+      '#type'        => 'hidden',
+      '#prefix'      => '<div id="hiddenid">',
+      '#suffix'      => '</div>',
+   );
+
+   $form['hyper']['startcontainer'] = array(
+      '#type'        => 'submit',
+      '#value'       => t('Start'),
+      '#prefix'      => '<div id="buttonstartid">',
+      '#suffix'      => '</div>',
+      '#attributes'  => array(
+         'onclick' => 'if(!confirm("Really Start?")){ return false; }'),
+      '#submit'      => array('reventlov_submit_start_container',),
+   );
+
+   $form['hyper']['stopcontainer'] = array(
+      '#type'        => 'submit',
+      '#value'       => t('Stop'),
+      '#prefix'      => '<div id="buttonstopid">',
+      '#suffix'      => '</div>',
+      '#attributes'  => array(
+         'onclick' => 'if(!confirm("Really Stop?")){ return false; }'),
+      '#submit'      => array('reventlov_submit_stop_container',),
+   );
+
+   $form['hyper']['delcontainer'] = array(
+      '#type'        => 'submit',
+      '#value'       => t('Delete'),
+      // '#prefix'      => '<div id="buttondelid">',
+      // '#suffix'      => '</div>',
+      '#attributes'  => array(
+         'onclick' => 'if(!confirm("Really Delete?")){ return false; }'),
+      '#submit'      => array('reventlov_submit_del_container',),
+   );
+
+   $form['hyper']['editcontainer'] = array(
+      '#type' => 'checkboxes',
+      '#options' => drupal_map_assoc(array(t('Yes'))),
+      '#title' => t('Modify the crontab of the selected containers'),
+   );
+
+   drupal_add_css(libraries_get_path('jQuery-Timepicker-Addon') . '/dist/jquery-ui-timepicker-addon.css');
+   drupal_add_js(libraries_get_path( 'jQuery-Timepicker-Addon') . '/dist/jquery-ui-timepicker-addon.js');
+   drupal_add_js(libraries_get_path( 'jQuery-Timepicker-Addon') . '/dist/jquery-ui-sliderAccess.js');
+
+   drupal_add_js(drupal_get_path('module', 'reventlov') . '/js/time.js');
+
+   $settings = array('hyperid' => $data);
+
+   drupal_add_js(drupal_get_path('module', 'reventlov') . '/js/image.js');
+   drupal_add_js(array('reventlovimg' => $settings), 'setting');
+
+   drupal_add_js(drupal_get_path('module', 'reventlov') . '/js/container.js');
+   drupal_add_js(array('reventlovctn' => $settings), 'setting');
+
+   $form['hyper']['statusperiod'] = array(
+      '#type' => 'radios',
+      '#options' => array(
+         'Yes' => t('Yes'),
+         'No'  => t('No'),
+      ),
+      //'#options' => drupal_map_assoc(array(t('Yes'), t('No'))),
+      '#title' => t('Select if you want a periodic process'),
+      '#prefix' => '<div id="newprofileid">',
+      '#suffix' => '</div>',
+      '#default_value' => t('No'),
+      '#states' => array(
+         'visible' => array(
+            ':input[name="editcontainer[Yes]"]' => array('checked' => TRUE),
+         ),
+      ),
+   );
+
+   $form['hyper']['cronperiod'] = array(
+      '#title' => t('Period'),
+      '#type' => 'textfield',
+      //'#default_value' => t('0'),
+      //'#required' => TRUE,
+      '#prefix' => '<div id="cronperiod">',
+      '#suffix' => '</div>',
+      '#states' => array(
+         'visible' => array(
+            array(
+               ':input[name="statusperiod"]' => array('value' => 'Yes'),
+               ':input[name="editcontainer[Yes]"]' => array('checked' => TRUE),
+            ),
+         ),
+      ),
+   );
+
+   $form['hyper']['cronminute'] = array(
+      '#title' => t('Minute'),
+      '#type' => 'textfield',
+      //'#default_value' => t('0'),
+      //'#required' => TRUE,
+      '#prefix' => '<div id="cronminute">',
+      '#suffix' => '</div>',
+      '#states' => array(
+         'visible' => array(
+            array(
+               ':input[name="statusperiod"]' => array('value' => 'No'),
+               ':input[name="editcontainer[Yes]"]' => array('checked' => TRUE),
+            ),
+         ),
+      ),
+   );
+
+   $form['hyper']['cronstart'] = array(
+      '#title' => t('Start Process'),
+      '#type' => 'textfield',
+      //'#required' => TRUE,
+      '#prefix' => '<div id="starttime">',
+      '#suffix' => '</div>',
+      '#states' => array( 
+         'visible' => array(
+            ':input[name="editcontainer[Yes]"]' => array('checked' => TRUE),
+         ),
+      ), 
+   );
+
+   $form['hyper']['cronend'] = array(
+      '#title' => t('End Process'),
+      '#type' => 'textfield',
+      //'#required' => TRUE,
+      '#prefix' => '<div class="time end">',
+      '#suffix' => '</div>',
+      '#states' => array( 
+         'visible' => array(
+            ':input[name="editcontainer[Yes]"]' => array('checked' => TRUE),
+         ),
+      ), 
+   );
+
+
+   //**************************************************************//
+
+   $form['hyper']['validcrontab'] = array(
+      '#type'        => 'submit',
+      '#value'       => t('Modify'),
+      '#prefix'      => '<div id="buttonmodifyid">',
+      '#suffix'      => '</div>',
+      '#attributes'  => array(
+         'onclick' => 'if(!confirm("Really Modify the crontab?")){ return false; }'),
+      '#submit'      => array('reventlov_submit_modify_crontab',),
+      '#states' => array(
+         'visible' => array(
+            ':input[name="editcontainer[Yes]"]' => array('checked' => TRUE),
+         ),
+      ),
+   );
+
+   $form['hyper']['statuscontainermemory'] = array(
+      '#markup'   => '<div id="containermemoryid"></div>',
+      '#prefix'      => '<div id="containermemoryid">',
+      '#suffix'      => '</div>',
+   );
+
+   $form['hyper']['statuscontainernetwork'] = array(
+      '#markup'   => '<div id="containernetworkid"></div>',
+      '#prefix'      => '<div id="containernetworkid">',
+      '#suffix'      => '</div>',
+   );
+
+
+   $output = 'Select one of these <strong style="color:#1487d4"> Container </strong> to view the charge.</br>';
+   $output .= '<br/>';
+
+   $form['graph']['information'] = array(
+      '#markup'      => $output,
+      '#prefix'      => '<div id="informationid">',
+      '#suffix'      => '</div>',
+   );
+
+
+   return $form;
+}
+
+function reventlov_clone_form($form, $form_state, $data) {
+   revenlov_load_libraries();
+   $_SESSION['reventlov']['image'] = $data;
+
+   $form['profile'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Profile list' ),
+   );
+
+   $html  = '<table id="tableprofile" class="display" width="100%" cellspacing="0">';
+   $html .= '<thead>';
+   $html .= '<tr>';
+   //   $html .= '<th>select</th>';
+   $html .= '<th>profileid</th>';
+   $html .= '<th>profilename</th>';
+   $html .= '<th>information</th>';
+   $html .= '<th>content</th>';
+   $html .= '</tr>';
+   $html .= '</thead>';
+   $html .= '</table>';
+
+   $form['profile']['tableprofile'] = array(
+      '#markup'   => '<div id="tableprofileid">' . $html . '</div>',
+   );
+
+   $form['profile']['newprofile'] = array(
+      '#type' => 'radios',
+      '#options' => array(
+         'Yes' => t('Yes'),
+         'No'  => t('No'),
+      ),
+      //'#options' => drupal_map_assoc(array(t('Yes'), t('No'))),
+      '#title' => t('Select if you want a new profile'),
+      '#prefix' => '<div id="newprofileid">',
+      '#suffix' => '</div>',
+      '#default_value' => t('No'),
+   );
+
+   $form['profile']['profilename'] = array(
+      '#title' => t('Profile Name'),
+      '#type' => 'textfield',
+      '#prefix' => '<div id="profilenameid">',
+      '#suffix' => '</div>',
+      '#states' => array(
+         'visible' => array(
+            ':input[name="newprofile"]' => array('value' => 'Yes'),
+         ),
+      ),
+   );
+
+   $form['profile']['profileinformation'] = array(
+      '#title' => t('Profile Information'),
+      '#type' => 'textfield',
+      '#prefix' => '<div id="profileinformationid">',
+      '#suffix' => '</div>',
+      '#states' => array(
+         'visible' => array(
+            ':input[name="newprofile"]' => array('value' => 'Yes'),
+         ),
+      ),
+   );
+
+   $form['profile']['profilefileurl'] = array(
+      '#type'           => 'file',
+      '#prefix'         => '<div id="fileurlid">',
+      '#suffix'         => '</div>',
+      '#value'          => 'Select your url file',
+      '#default_value'  => isset($form_state['values']['profilefileurl']) ? $form_state['values']['profilefileurl'] : array(),
+      '#title'          => t('URLs List'),
+      '#states' => array(
+         'visible' => array(
+            ':input[name="newprofile"]' => array('value' => 'Yes'),
+         ),
+      ),
+   );
+
+   $form['profile']['submit_button'] = array(
+      '#type'     => 'submit',
+      '#value'    => t('Create '),
+      '#prefix'   => '<div id="submitfileurlid">',
+      '#suffix'   => '</div>',
+      '#submit'   => array('reventlov_fileurl_form_submit',),
+      '#states' => array(
+         'visible' => array(
+            ':input[name="newprofile"]' => array('value' => 'Yes'),
+         ),
+      ),   
+   );
+
+   $form['cloneimage'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Clone this image'),
+      '#prefix' => '<div class="inputdata">',
+      '#suffix' => '</div>',
+        /*'#states' => array(
+           'visible' => array(
+           ':input[name="selectcontainer"]' => array('value' => $row->imagename),
+           ),
+        ),*/
+   );
+
+   // drupal_set_message("<pre>" . print_r($tmpbridge[0]->cpu, true) . "</pre>");
+   $listbridge = array();
+   $tmpbridge = _Reventlov_gethypervisor($_SESSION['reventlov']['hypervisor']);
+   // drupal_set_message("<pre>" . print_r($tmpbridge[0]->cpu, true) . "</pre>");
+
+
+   $tmpcpus = array();
+   foreach (range(1, $tmpbridge[0]->cpu ) as $number) {
+      $tmpcpus[$number] = t($number);
+   }
+
+   $form['cloneimage']['cpu'] = array(
+      '#type' => 'radios',
+      '#options'  => $tmpcpus,
+      '#title' => t('How many cpus to use'),
+      '#prefix' => '<div id="cpusid">',
+      '#suffix' => '</div>',
+      '#default_value' => t('1'),
+   );
+
+   $form['cloneimage']['memory'] = array(
+      '#type' => 'radios',
+      '#options' => array(
+         '256'   => t('256Mo'),
+         '512'   => t('512Mo'),
+      ),
+      //'#options' => drupal_map_assoc(array(t('Yes'), t('No'))),
+      '#title' => t('How many memories to use'),
+      '#prefix' => '<div id="memoryid">',
+      '#suffix' => '</div>',
+      '#default_value' => t('256'),
+      '#disabled' => TRUE,
+      // '#type' => 'hidden',
+   );
+
+   $form['cloneimage']['statusperiod'] = array(
+      '#type' => 'radios',
+      '#options' => array(
+         'Yes' => t('Yes'),
+         'No'  => t('No'),
+      ),
+      //'#options' => drupal_map_assoc(array(t('Yes'), t('No'))),
+      '#title' => t('Select if you want a periodic process'),
+      '#prefix' => '<div id="newprofileid">',
+      '#suffix' => '</div>',
+      '#default_value' => t('No'),
+   );
+
+
+   $form['cloneimage']['cronperiod'] = array(
+      '#title' => t('Period'),
+      '#type' => 'textfield',
+      //'#default_value' => t('0'),
+      //'#required' => TRUE,
+      '#prefix' => '<div id="cronperiod">',
+      '#suffix' => '</div>',
+      '#states' => array(
+         'visible' => array(
+            ':input[name="statusperiod"]' => array('value' => 'Yes'),
+         ),
+      ),
+   );
+
+   $form['cloneimage']['cronminute'] = array(
+      '#title' => t('Minute'),
+      '#type' => 'textfield',
+      //'#default_value' => t('0'),
+      //'#required' => TRUE,
+      '#prefix' => '<div id="cronminute">',
+      '#suffix' => '</div>',
+      '#states' => array(
+         'visible' => array(
+            ':input[name="statusperiod"]' => array('value' => 'No'),
+         ),
+      ),
+   );
+
+   $form['cloneimage']['cronstart'] = array(
+      '#title' => t('Start Process'),
+      '#type' => 'textfield',
+      //'#required' => TRUE,
+      '#prefix' => '<div id="starttime">',
+      '#suffix' => '</div>',
+      /*       '#states' => array( */
+      // 'visible' => array(
+      // ':input[name="statusperiod"]' => array('value' => 'No'),
+      // ),
+      /* ), */
+   );
+
+   $form['cloneimage']['cronend'] = array(
+      '#title' => t('End Process'),
+      '#type' => 'textfield',
+      //'#required' => TRUE,
+      '#prefix' => '<div class="time end">',
+      '#suffix' => '</div>',
+      /*      '#states' => array( */
+      // 'visible' => array(
+      // ':input[name="statusperiod"]' => array('value' => 'No'),
+      // ),
+      /* ), */
+   );
+
+   /* $listbridge = array(); */
+   // $tmpbridge = _Reventlov_gethypervisor($_SESSION['reventlov']['hypervisor']);
+   // drupal_set_message("<pre>" . print_r($tmpbridge[0]->cpu, true) . "</pre>");
+
+   drupal_add_js(drupal_get_path('module', 'reventlov') . '/js/time.js');
+   $tabbridge = explode(" ",$tmpbridge[0]->bridge);
+   foreach($tabbridge as $rowbridge) {
+      if ($rowbridge !='') {
+         $listbridge[$rowbridge] = $rowbridge;
+      }
+   }
+
+
+   $form['cloneimage']['bridge'] = array(
+      '#title'    => t('Select the bridge'),
+      '#type'     => 'select',
+      '#options'  => $listbridge,
+      '#prefix' => '<div id="listbridgeid">',
+      '#suffix' => '</div>',
+   );
+
+   $listprofiles = getlistprofiles();
+
+   $form['cloneimage']['selectprofile'] = array(
+      '#title' => t('Select a profile'),
+      '#type'  => 'select',
+      '#options'   => $listprofiles,
+      '#prefix' => '<div id="listprofileid">',
+      '#suffix' => '</div>',
+      '#size' => 10,
+      //'#states' => array(
+      //    'visible' => array(
+      //        ':input[name="mapping"]' => array('value' => 'No'),
+      //    ),
+      //),
+   );
+
+
+   $form['cloneimage']['mapping'] = array(
+      '#type' => 'radios',
+      '#options' => array(
+         'Yes' => t('Yes'),
+         'No'  => t('No'),
+      ),
+      //'#options' => drupal_map_assoc(array(t('Yes'), t('No'))),
+      '#title' => t('Select if the public address is different'),
+      '#prefix' => '<div id="mappingid">',
+      '#suffix' => '</div>',
+      '#default_value' => t('No'),
+   );
+
+   /*    $form['cloneimage']['dnsip'] = array( */
+   // '#type'           => 'textfield',
+   // '#title'          => t('Input your DNS IP Address'),
+   // '#default_value' => t('8.8.8.8'),
+   // '#attributes'     => array('maxlength' => 20, 'size' => 20),
+   // '#prefix'         => '<div id="inputdnsid">',
+   // '#suffix'         => '</div>',
+   // '#states' => array(
+   // 'visible' => array(
+   // ':input[name="mapping"]' => array('value' => 'Yes'),
+   // ),
+   // ),
+   // );
+
+   // $form['cloneimage']['extip'] = array(
+   // '#type'           => 'textfield',
+   // '#title'          => t('Input your Public IP Address'),
+   // '#default_value' => t('0.0.0.0'),
+   // '#attributes'     => array('maxlength' => 20, 'size' => 20),
+   // '#prefix'         => '<div id="inputaddressid">',
+   // '#suffix'         => '</div>',
+   // '#states' => array(
+   // 'visible' => array(
+   // ':input[name="mapping"]' => array('value' => 'Yes'),
+   // ),
+   // ),
+   /* ); */
+
+   $output = 'Select a file if you want to create many containers defined by the triple <strong style="color:#3366FF" >IP Public Address; IP Dns Address ; Profile </strong>';
+
+   $form['cloneimage']['file'] = array(
+      '#type'           => 'file',
+      '#prefix'         => '<div id="fileid">',
+      '#suffix'         => '</div>',
+      '#description'     => $output,
+      '#value'          => 'Select your file',
+      '#default_value'  => isset($form_state['values']['file']) ? $form_state['values']['file'] : array(),
+      '#title'          => t('New Containers'),
+      '#states' => array(
+         'visible' => array(
+            ':input[name="mapping"]' => array('value' => 'Yes'),
+         ),
+      ),
+   );
+
+
+   $form['cloneimage']['submit_button'] = array(
+      '#type'     => 'submit',
+      '#value'    => t('Upload '),
+      '#prefix'   => '<div id="submitfileid">',
+      '#suffix'   => '</div>',
+      '#submit'      => array('reventlov_edit_form_submit',),
+        /*'#states' => array(
+           'visible' => array(
+           array(
+           array(':input[name="network"]' => array('value' => 'multidns')),
+           'or',
+           array(':input[name="network"]' => array('value' => 'bridge')),
+           ),
+           ),
+        ),*/
+   );
+
+   return $form;
+}
+
+function _reventlov_clone_form($form, $form_state, $data) {
+   revenlov_load_libraries();
+   $_SESSION['reventlov']['image'] = $data;
+
+   $form['cloneimage'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Clone this image'),
+        /*'#states' => array(
+           'visible' => array(
+           ':input[name="selectcontainer"]' => array('value' => $row->imagename),
+           ),
+        ),*/
+   );
+
+   $list_network = array();
+   $list_network = reventlov_getnetwork();
+
+   $form['cloneimage']['network'] = array(
+      '#type'     => 'select',
+      '#title'    => t('Network'),
+      '#options'  => $list_network,
+      '#default_value' => 'bridge',
+      '#prefix'   => '<div id="bridgeid">',
+      '#suffix'   => '</div>',
+      '#size'     => 10,
+   );
+
+   //$form['cloneimage']['bridgegraphic'] = array(
+   //    '#markup'   => '<div id="bridgegraphic" style="width: 600px; height: 250px; margin: 0 auto"></div>',
+   //);
+
+   //$form['cloneimage']['multidnsgraphic'] = array(
+   //    '#markup'        => '<div id="multidnsgraphic" style="width: 600px; height: 250px; margin: 0 auto"></div>',
+   //);
+
+   if (isset($_SESSION['reventlov']['hypervisor']) && $_SESSION['reventlov']['hypervisor'] != NULL){
+      //drupal_set_message($_SESSION['reventlov']['hypervisor']);
+      $settings = array(
+         'hypervisor' => $_SESSION['reventlov']['hypervisor'],
+      );
+      drupal_add_js(array('reventlov' => $settings), 'setting');
+      drupal_add_js(drupal_get_path('module', 'reventlov') . '/js/bridge.js');
+   }
+
+
+
+   $output = 'Select one of these <strong style="color:#3366FF"> Networks </strong>.</br>';
+   $output .= 'The <strong style="color:#3366FF">bridge network</strong> connects and attribute a IP address to your new container.<br/>';
+   $output .= 'The IP will be natted outside the local network<br/>';
+   //$output .= 'The <strong style="color:#3366FF">multidns network</strong> connects and attribute a local IP address to your(s) new(s) container(s)<br/>';
+   //$output .= 'The IP will be translated to a specific address defined at the creation of the container<br/>';
+
+   $form['cloneimage']['information'] = array(
+      '#markup'      => $output,
+      '#prefix'      => '<div id="informationid">',
+      '#suffix'      => '</div>',
+   );
+
+
+    /*$form['cloneimage']['file'] = array(
+        '#type'           => 'file',
+        '#prefix'         => '<div id="fileid">',
+        '#suffix'         => '</div>',
+        '#value'          => 'Select your file',
+        '#default_value'  => isset($form_state['values']['file']) ? $form_state['values']['file'] : array(),
+        '#title'          => t('New Containers'),
+        '#states' => array(
+            'visible' => array(
+                ':input[name="network"]' => array('value' => 'multidns'),
+            ),
+        ),
+    );*/
+
+    /*$form['cloneimage']['inputdns'] = array(
+        '#type'           => 'textfield',
+        '#title'          => t('Input your DNS'),
+        '#default_value' => t('8.8.8.8'),
+        '#attributes'     => array('maxlength' => 20, 'size' => 20),
+        '#prefix'         => '<div id="inputdnsid">',
+        '#suffix'         => '</div>',
+        //'#states' => array(
+        //    'visible' => array(
+        //        ':input[name="network"]' => array('value' => 'bridge'),
+        //    ),
+        //),
+    );*/
+
+    /*$form['cloneimage']['inputip'] = array(
+        '#type'           => 'textfield',
+        '#title'          => t('Input your IP address'),
+        '#default_value' => t('0.0.0.0'),
+        '#attributes'     => array('maxlength' => 20, 'size' => 20),
+        '#prefix'         => '<div id="inputaddressid">',
+        '#suffix'         => '</div>',
+        //'#states' => array(
+        //    'visible' => array(
+        //        ':input[name="network"]' => array('value' => 'bridge'),
+        //    ),
+        //),
+    );*/
+
+   $form['cloneimage']['submit_button'] = array(
+      '#type'     => 'submit',
+      '#value'    => t('Upload '),
+      '#prefix'   => '<div id="submitfileid">',
+      '#suffix'   => '</div>',
+      '#submit'      => array('reventlov_edit_form_submit',),
+        /*'#states' => array(
+           'visible' => array(
+           array(
+           array(':input[name="network"]' => array('value' => 'multidns')),
+           'or',
+           array(':input[name="network"]' => array('value' => 'bridge')),
+           ),
+           ),
+        ),*/
+   );
+
+   return $form;
+}
+
+
+
+function reventlov_getimages() {
+   $finalresult = array() ;
+
+   $query = "SELECT * FROM {image}";
+   db_set_active('lxc');
+   $result = db_query($query);
+   db_set_active();
+   foreach($result as $row){
+      $finalresult[$row->imagename] = t($row->imagename);
+   }
+
+   return $finalresult;
+}
+
+function reventlov_submit_del_container($form, &$form_state) {
+   $_SESSION['hiddenfield'] = $form_state['values']['hiddenfield'];
+   reventlov_switch_state(2);
+
+}
+
+function reventlov_submit_stop_container($form, &$form_state) {
+   $_SESSION['hiddenfield'] = $form_state['values']['hiddenfield'];
+   reventlov_switch_state(0);
+}
+
+function reventlov_submit_modify_crontab($form, &$form_state) {
+   $_SESSION['hiddenfield'] = $form_state['values']['hiddenfield'];
+   $data['minute']      = $form_state["values"]['cronminute'];
+   $data['period']      = $form_state["values"]['cronperiod'];
+   $data['startprocess']= $form_state["values"]['cronstart'];
+   $data['endprocess']  = $form_state["values"]['cronend'];
+
+   reventlov_modify_crontab($data);
+}
+
+function reventlov_submit_start_container($form, &$form_state) {
+   $_SESSION['hiddenfield'] = $form_state['values']['hiddenfield'];
+
+   reventlov_switch_state(1);
+   //drupal_set_message('<pre>' .print_r($_SESSION['hiddenfield'],true) . '</pre>');
+
+   //$form_state['rebuild']=TRUE;
+}
+
+function reventlov_modify_crontab($data) {
+   $ctn = explode(";", $_SESSION['hiddenfield']);
+
+   // drupal_set_message('<pre>' .print_r($data,true) . '</pre>');
+   $crontab  = convertcrontab($data);
+
+   foreach ($ctn as &$value) {
+      if ($value != '') {
+         $data = explode("#", $value);
+
+         $query='UPDATE {container} SET crontab = ' . $crontab . ' WHERE containerid = ' . $data[0] . '';
+         db_set_active('lxc');
+         db_query("UPDATE {container} SET crontab = :flag WHERE containerid = :containerid",array(':flag' => $crontab, ':containerid' => $data[0]));
+         db_set_active();
+      }
+   }
+}
+
+function reventlov_switch_state($flag) {
+   //drupal_set_message('<pre>' .print_r($_SESSION['hiddenfield'],true) . '</pre>');
+
+   $ctn = explode(";", $_SESSION['hiddenfield']);
+
+   foreach ($ctn as &$value) {
+      if ($value != '') {
+         //drupal_set_message('<pre>' .print_r($value,true) . '</pre>');
+         $data = explode("#", $value);
+         //drupal_set_message('<pre>' .print_r($data[0],true) . '</pre>');
+         /*if ($data[1] == "0") {
+            //drupal_set_message('<pre>' .print_r($data[1],true) . '</pre>');
+            db_set_active('lxc');
+            db_update('container')
+               ->fields(array( 'status' => 1,))
+               ->condition('containerid', $data[0])
+               ->execute();
+            db_set_active();
+         } else {
+            db_set_active('lxc');
+            db_update('container')
+               ->fields(array( 'status' => 0,))
+               ->condition('containerid', $data[0])
+               ->execute();
+            db_set_active();
+         }*/
+         $query='UPDATE {container} SET status = ' . intval($flag) . ' WHERE containerid = ' . $data[0] . '';
+         //drupal_set_message('<pre>' .print_r($query,true).'</pre>');
+         db_set_active('lxc');
+         db_query("UPDATE {container} SET status = :flag WHERE containerid = :containerid",array(':flag' => $flag, ':containerid' => $data[0]));
+         /*db_update('container')
+         ->fields(array( 'status' => $flag,))
+         ->condition('containerid', $data[0])
+         ->execute();*/
+         //db_query($query);
+         db_set_active();
+      }
+   }
+}
+
+function reventlov_edit_form_submit($form, &$form_state) {
+   global $user;
+   $userId = $user->uid;
+
+   $data['userid']      = $userId;
+   $data['imageid']     = $_SESSION['reventlov']['image'];
+   $data['hypervisor']  = $_SESSION['reventlov']['hypervisor'];            
+   $data['cpu']         = $form_state["values"]['cpu'];            
+   $data['memory']      = $form_state["values"]['memory'];            
+   $data['bridge']      = $form_state["values"]['bridge'];
+   $data['profile']     = $form_state["values"]['selectprofile'];
+   $data['period']      = $form_state["values"]['cronperiod'];
+   $data['minute']      = $form_state["values"]['cronminute'];
+   $data['startprocess']= $form_state["values"]['cronstart'];
+   $data['endprocess']  = $form_state["values"]['cronend'];
+   $data['intip']       = "-.-.-.-";
+   $data['dnsip']       = "-.-.-.-";
+   $data['extip']       = "-.-.-.-";
+   $data['crontab']     = convertcrontab($data);
+
+
+   // drupal_set_message('<pre>' . print_r($data, true) . '</pre>');
+
+   if (isset($_SESSION['reventlov']['hypervisor'])){
+
+      //drupal_set_message($form_state["values"]["mapping"]);
+
+      if ($form_state["values"]["mapping"] == "Yes") {
+         //drupal_set_message($form_state["values"]["mapping"]);
+
+         $file_upload = file_save_upload('file', array(
+            'file_validate_extensions' => array('lst txt'),
+            //FILE_EXISTS_REPLACE
+            //FILE_EXISTS_RENAME
+         ));
+         if ($file_upload != null) {
+            $content = file($file_upload->uri);
+            foreach($content as $key => $line){
+               $info = explode(";", $line);
+               if (count($info) == 3) {
+                  $data['extip']    = trim($info[0]);
+                  $data['dns']      = trim($info[1]);
+                  $data['profile']  = trim($info[2]);
+                  reventlov_add_one_container($data);
+               } else {
+                  drupal_set_message("Error with your loaded file", 'warning');
+               }
+            }              
+         } else if ($form_state["values"]["dnsip"] != '-.-.-.-' && $form_state["values"]["extip"] != '-.-.-.-' ){
+            if (isset($form_state["values"]["selectprofile"])) {
+               if ($form_state["values"]["selectprofile"] != "") {
+                  $data['profile']  = $form_state["values"]["selectprofile"]; 
+               }
+            }
+            $data['extip'] = $form_state["values"]["extip"];
+            $data['dnsip'] = $form_state["values"]["dnsip"];
+            reventlov_add_one_container($data);
+         }
+      } else {
+         reventlov_add_one_container($data);
+      }
+   }
+
+   $form_state['redirect'] = 'EditHyper/'.$_SESSION['reventlov']['hypervisor']; 
+}
+
+function convertcrontab($data) {
+   // drupal_set_message('<pre>' . print_r($data, true) . '</pre>');
+   if ($data['period'] != '') {
+      $period = explode(":",$data['period']);
+      $periode = "*/" . $period[1];
+   } elseif ($data['minute'] != '') {
+      $period = explode(":",$data['minute']);
+      $periode = $period[1];
+   } else {
+      $periode = '*';
+   }
+
+   if ($data['startprocess'] != '' && $data['endprocess'] != '') {
+      $start   = explode(":",$data['startprocess']);  
+      $end     = explode(":",$data['endprocess']);
+      $replacestart   = preg_replace("/^0/","" ,$start[0]);
+      $replaceend     = preg_replace("/^0/","" ,$end[0]);
+      $interval       = $replacestart . "-" . $replaceend;
+   } else {
+      $interval = "*"; 
+   } 
+   //drupal_set_message("lolo");
+   // drupal_set_message('*/' . $periode . ' ' . $start[0] . '-' . $end[0] . ' * * ');
+   // drupal_set_message($periode . " " . $interval ." * * * ");
+
+   $crontab = $periode . " " . $interval ." * * * ";
+
+   return $crontab;
+}
+
+function url_exists($url) {
+   if (empty($url)) {
+      throw new Exception('URL is empty');
+   }
+
+   // list of HTTP status codes
+   $httpStatusCodes = array(
+      100 => 'Continue',
+      101 => 'Switching Protocols',
+      102 => 'Processing',
+      200 => 'OK',
+      201 => 'Created',
+      202 => 'Accepted',
+      203 => 'Non-Authoritative Information',
+      204 => 'No Content',
+      205 => 'Reset Content',
+      206 => 'Partial Content',
+      207 => 'Multi-Status',
+      208 => 'Already Reported',
+      226 => 'IM Used',
+      300 => 'Multiple Choices',
+      301 => 'Moved Permanently',
+      302 => 'Found',
+      303 => 'See Other',
+      304 => 'Not Modified',
+      305 => 'Use Proxy',
+      306 => 'Switch Proxy',
+      307 => 'Temporary Redirect',
+      308 => 'Permanent Redirect',
+      400 => 'Bad Request',
+      401 => 'Unauthorized',
+      402 => 'Payment Required',
+      403 => 'Forbidden',
+      404 => 'Not Found',
+      405 => 'Method Not Allowed',
+      406 => 'Not Acceptable',
+      407 => 'Proxy Authentication Required',
+      408 => 'Request Timeout',
+      409 => 'Conflict',
+      410 => 'Gone',
+      411 => 'Length Required',
+      412 => 'Precondition Failed',
+      413 => 'Payload Too Large',
+      414 => 'Request-URI Too Long',
+      415 => 'Unsupported Media Type',
+      416 => 'Requested Range Not Satisfiable',
+      417 => 'Expectation Failed',
+      418 => 'I\'m a teapot',
+      422 => 'Unprocessable Entity',
+      423 => 'Locked',
+      424 => 'Failed Dependency',
+      425 => 'Unordered Collection',
+      426 => 'Upgrade Required',
+      428 => 'Precondition Required',
+      429 => 'Too Many Requests',
+      431 => 'Request Header Fields Too Large',
+      449 => 'Retry With',
+      450 => 'Blocked by Windows Parental Controls',
+      500 => 'Internal Server Error',
+      501 => 'Not Implemented',
+      502 => 'Bad Gateway',
+      503 => 'Service Unavailable',
+      504 => 'Gateway Timeout',
+      505 => 'HTTP Version Not Supported',
+      506 => 'Variant Also Negotiates',
+      507 => 'Insufficient Storage',
+      508 => 'Loop Detected',
+      509 => 'Bandwidth Limit Exceeded',
+      510 => 'Not Extended',
+      511 => 'Network Authentication Required',
+      599 => 'Network Connect Timeout Error'
+   );
+
+   $ch = curl_init($url);
+   curl_setopt($ch, CURLOPT_NOBODY, true);
+   curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
+
+   if (isset($options['timeout'])) {
+      $timeout = (int) $options['timeout'];
+      curl_setopt($ch, CURLOPT_TIMEOUT, $timeout);
+   }
+
+   curl_exec($ch);
+   $returnedStatusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+   curl_close($ch);
+
+   drupal_set_message($returnedStatusCode);
+   drupal_set_message($httpStatusCodes);
+   if (array_key_exists($returnedStatusCode, $httpStatusCodes)) {
+      //return "URL: '{$url}' - Error code: {$returnedStatusCode} - Definition: {$httpStatusCodes[$returnedStatusCode]}";
+      return true;
+   } else {
+      //return "'{$url}' does not exist";
+      return false;
+   }
+}
+
+function urlExists($url)
+{
+   //drupal_set_message($url);
+
+   if (@file_get_contents($url,false,NULL,0,1))
+   {
+      return true;
+   }
+   return false;
+}
+
+function reventlov_fileurl_form_submit($form, &$form_state) {
+   $dataprofile                         = array();
+   $dataprofile['profilename']          = $form_state["values"]['profilename'];
+   $dataprofile['profileinformation']   = $form_state["values"]['profileinformation'];
+
+   $content = "";
+
+   if ($dataprofile['profilename'] != ''){
+      if ($dataprofile['profileinformation'] != '') {
+         $file_upload = file_save_upload('profilefileurl', array(
+            'file_validate_extensions' => array('txt lst'),
+            //FILE_EXISTS_REPLACE
+            //FILE_EXISTS_RENAME
+         ));
+         if ($file_upload != null) {
+            $contents = file($file_upload->uri);
+            foreach($contents as $key => $line){
+
+               //$line = trim($line);
+               //$info = explode(";", $line);
+               //$data['extip'] = trim($info[0]);
+               //$data['dns']   = trim($info[0]);
+
+               $string = str_replace(' ', '', $line);
+               //reventlov_add_one_container($data);
+               if (urlExists("http://".$string)) {
+                  $content .= $string . ';';
+                  //drupal_set_message("OK: " . $line);
+               } else {
+                  $content .= $string . ";";
+                  //drupal_set_message("KO: " . $line);
+               }
+            } 
+            $dataprofile['content'] = $content;
+            add_profile($dataprofile);
+         } else {
+            form_set_error('file', t('Failed to write the uploaded file the site\'s file folder.'));
+         }
+      }
+      //$form_state['redirect'] = 'EditHyper/'.$_SESSION['reventlov']['hypervisor']; 
+   }
+   $form_state['rebuild'] = TRUE;
+}
+
+function _reventlov_edit_form_submit($form, &$form_state) {
+   if (isset($_SESSION['reventlov']['hypervisor'])){
+      $data = array();
+      $data['hypervisor'] = $_SESSION['reventlov']['hypervisor'];
+      if (isset($_SESSION['reventlov']['image'])){
+         $data['imageid'] = $_SESSION['reventlov']['image'];
+         if (isset($form_state["values"]["network"])) {
+            $data['network'] = $form_state["values"]["network"];
+                /*if ($form_state["values"]["network"] == 'multidns') {
+                    $file_upload = file_save_upload('file', array());
+
+                    //drupal_set_message("lolo");
+                    //$data = array();
+                    //$data['hypervisor'] = $_SESSION['reventlov']['hypervisor'];
+                    //$data['image'] = $form_state["values"]["selectcontainer"];
+                    //$data['imageid'] = $_SESSION['reventlov']['image'];
+                    //$data['archi'] = $form_state["values"]["architecture".$data['image']];
+                    //drupal_set_message('<pre>'.print_r($data, true).'</pre>');
+
+                    if ($file_upload != null) {
+                        //drupal_set_message($form_state["values"]["selectcontainer"]);
+                        $content = file($file_upload->uri);
+                        //$_SESSION['Reventlov']['parsed'] = $content;
+
+                        foreach($content as $key => $line){
+                            //drupal_set_message('Le fichier: <strong>"' . $line . '"</strong> est bien sur le serveur');
+                            $_SESSION['reventlov']['parsed'][$line] = $line;
+                        }
+
+                        $content = $_SESSION['reventlov']['parsed'];
+                        reventlov_add_containers($content, $data);
+                    }
+                } else {
+                    //$line= $form_state["values"]["inputip".$data['imageid']] . ";" .  $form_state["values"]["inputdns".$data['imageid']];
+                    $line= $form_state["values"]["inputip"] . ";" .  $form_state["values"]["inputdns"];
+                    //$content = "199.88.88.100;8.8.8.8";
+                    reventlov_add_one_container($line, $data);
+                }*/
+            //$line= "10.0.0.10;8.8.8.8";
+            //reventlov_add_one_container($line, $data);
+            reventlov_add_one_container($data);
+            //drupal_set_message($form_state["values"]["network"]);
+         }
+      }
+   }
+   $form_state['rebuild'] = TRUE;
+   $form_state['redirect'] = 'EditHyper/1';
+}
+
+function reventlov_get_form($form, &$form_state) {
+   revenlov_load_libraries();
+
+   $form['description'] = array(
+      '#type' => 'item',
+      '#title' => t('Propose to manage hypervisor LXC-Docker'),
+   );
+
+   $form['manage'] = array(
+      '#type'     => 'fieldset',
+      '#prefix'   => '<div id="managehyperid">',
+      '#suffix'   => '</div>',
+      '#title'    => t('All hypervisor'),
+   );
+
+   $html  = '<table id="tablehyper" class="display" width="100%" cellspacing="0">';
+   $html .= '<thead>';
+   $html .= '<tr>';
+   $html .= '<th>hyperid</th>';
+   $html .= '<th>hypername</th>';
+   $html .= '<th>cpu</th>';
+   $html .= '<th>architecture</th>';
+   $html .= '<th>typevirt</th>';
+   $html .= '<th>bridge</th>';
+   $html .= '<th>totalHD</th>';
+   $html .= '<th>useHD</th>';
+   $html .= '<th>totalRAM</th>';
+   $html .= '<th>useRAM</th>';
+   $html .= '<th>timestamp</th>';
+   $html .= '<th>edit/view</th>';
+   $html .= '</tr>';
+   $html .= '</thead>';
+   $html .= '</table>';
+
+   $form['manage']['tablehyper'] = array(
+      '#markup'   => '<div id="tablehyperid">' . $html . '</div>',
+   );
+
+   $form['manage']['hidden'] = array(
+      '#markup'   => '<div id="hiddenid"></div>',
+   );
+
+   $output = 'Select one of these <strong style="color:#1487d4"> Hypervisors </strong> to view the charge.</br>';
+   $output .= '<br/>';
+
+   $form['manage']['information'] = array(
+      '#markup'      => $output,
+      '#prefix'      => '<div id="informationid">',
+      '#suffix'      => '</div>',
+   );
+
+
+   $form['manage']['statushyper'] = array(
+      '#markup'   => '<div id="statushyperid"></div>',
+   );
+
+   $form['manage']['statuscontainer'] = array(
+      '#markup'   => '<div id="statuscontainerid"></div>',
+   );
+
+   drupal_add_js(drupal_get_path('module', 'reventlov') . '/js/hyper.js');
+   return $form;
+}
+
+function reventlov_getimages_callback($id) {
+   db_set_active('lxc');
+   $queryhyper = db_select('hypervisor','h')
+      ->fields('h')
+      ->condition('hyperid',$id)
+      ->execute();
+   db_set_active();
+
+   foreach($queryhyper as $rowhyper) {
+      db_set_active('lxc');
+      $queryimage = db_select('image','i')
+         ->fields('i')
+         ->condition('architecture',$rowhyper->architecture)
+         ->condition('vtype',$rowhyper->typevirt)
+         ->condition('status', 1)
+         ->execute();
+      db_set_active();
+   }
+
+   $rows = array();
+
+   foreach ($queryimage as $rowimage) {
+      $rows[] = array(
+         $rowimage->imageid,
+         $rowimage->imagename,
+         $rowimage->path,
+         $rowimage->vtype,
+         $rowimage->information,
+         $rowimage->architecture,
+         l('clone',      'CloneImage/'. $rowimage->imageid),
+      );
+   }
+
+   $output = array();
+   $output['data'] = array();
+   $output['data'] = $rows;
+
+   echo json_encode($rows);
+}
+
+function reventlov_getprofiles_callback() {
+   db_set_active('lxc');
+   $result = db_query("SELECT * FROM {profile} p");
+   db_set_active();
+
+   $rows = array();
+
+   foreach ($result as $row) {
+      $rows[] = array(
+         //         '',
+         //l($row->imageid,        'CloneImage/'. $row->imageid),
+         $row->profileid,
+         //l($row->imagename,      'CloneImage/'. $row->imageid),
+         $row->profilename,
+         //l($row->information,    'CloneImage/'. $row->imageid),
+         $row->information,
+         //l($row->architecture,   'CloneImage/'. $row->imageid),
+         $row->content,
+         //l('clone',      'CloneImage/'. $row->imageid),
+         //$row->useRAM,
+      );
+   }
+
+   $output = array();
+   $output['data'] = array();
+   $output['data'] = $rows;
+
+   echo json_encode($rows);
+
+   //return $rows;
+}
+
+function reventlov_gethypers_callback() {
+   db_set_active('lxc');
+   $result = db_query("SELECT * FROM {hypervisor} u");
+   db_set_active();
+
+   $rows = array();
+
+   foreach ($result as $row) {
+      $timeZone = 'Europe/Paris';
+      date_default_timezone_set($timeZone);
+      $date = date_create();
+      date_timestamp_set($date, $row->timestamp);
+      $rows[] = array(
+         $row->hyperid,
+         $row->hypername,
+         $row->cpu,
+         $row->architecture,
+         $row->typevirt,
+         $row->bridge,
+         $row->totalHD,
+         $row->useHD, 
+         $row->totalRAM,
+         $row->useRAM,
+         date_format($date, 'd-m-Y H:i:s'),
+         l('edit/view', 'EditHyper/'. $row->hyperid),
+
+      );
+   }
+
+   $output = array();
+   $output['data'] = array();
+   $output['data'] = $rows;
+
+   echo json_encode($rows);
+
+   //return $rows;
+}
+
+function revenlov_load_libraries() {
+   drupal_add_css(drupal_get_path('module', 'reventlov') . '/css/styles.css');
+   drupal_add_css(drupal_get_path('module', 'reventlov') . '/css/highcharts.css');
+
+   drupal_add_js(libraries_get_path('jquery-ui-1.10.4')   . '/ui/jquery-ui.js');
+   drupal_add_css(libraries_get_path('jquery-ui-themes-1.10.4')  . '/themes/smoothness/jquery-ui.css');
+
+   drupal_add_js(libraries_get_path('Highcharts')  . '/code/js/highcharts.js');
+   drupal_add_js(libraries_get_path('Highcharts')  . '/code/js/modules/exporting.js');
+
+   drupal_add_css(libraries_get_path('DataTables') . '/media/css/dataTables.foundation.css');
+   drupal_add_js(libraries_get_path('DataTables')  . '/media/js/jquery.dataTables.js');
+
+   drupal_add_css(libraries_get_path('jQuery-Timepicker-Addon') . '/dist/jquery-ui-timepicker-addon.css'); 
+   drupal_add_js(libraries_get_path( 'jQuery-Timepicker-Addon') . '/dist/jquery-ui-timepicker-addon.js');
+   drupal_add_js(libraries_get_path( 'jQuery-Timepicker-Addon') . '/dist/jquery-ui-sliderAccess.js');
+
+   //drupal_add_js(drupal_get_path('module', 'reventlov') . '/js/hyper.js');
+   //drupal_add_js(drupal_get_path('module', 'reventlov') . '/js/container.js');
+   //drupal_add_js(drupal_get_path('module', 'reventlov') . '/js/image.js');
+   drupal_add_js(drupal_get_path('module', 'reventlov') . '/js/time.js');
+   drupal_add_js(drupal_get_path('module', 'reventlov') . '/js/profile.js');
+}

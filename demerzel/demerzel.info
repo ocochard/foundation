@@ -1,0 +1,5 @@
+name = Eto Demerzel
+description = Eto Demerzel
+core = 7.x
+dependencies[] = libraries
+package = Foundation

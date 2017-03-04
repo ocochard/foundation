@@ -1,0 +1,23 @@
+# vim:ft=ansible:
+---
+# tasks file for common
+- name: Update system
+  apt: update_cache=yes 
+  # environment:
+    # http_proxy: "{{ http_proxy }}"
+
+- name: Upgrade system
+  apt: upgrade=yes 
+  # environment:
+    # http_proxy: "{{ http_proxy }}"
+
+- name: Adding common package
+  apt: name={{ item }} update_cache=yes state=present
+  with_items:
+    - vim
+    - wget
+    - curl
+    - apt-transport-https
+  # environment:
+    # http_proxy: "{{ http_proxy }}"
+

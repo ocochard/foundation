@@ -1,0 +1,84 @@
+# vim:ft=ansible:
+---
+# tasks file for dbserver
+- name: Adding dbserver packages
+  apt: name={{ item }} state=present
+  with_items:
+    - mariadb-server
+    - mariadb-client
+    - python-mysqldb
+    - git
+
+- name: Enable listen 0.0.0.0
+  blockinfile:
+    dest: /etc/mysql/my.cnf
+    block: |
+       [mysqld]
+       bind-address = 0.0.0.0
+
+# Restart networking
+- name: Restart mysql
+  service:
+    name: mysql
+    state: restarted
+
+# Create Databases
+- name: Create the drupaldb Database
+  mysql_db:
+    name: drupaldb
+    state: present
+
+- name: Create the content_delivery_weather Database
+  mysql_db:
+    name: content_delivery_weather
+    state: present
+
+- name: Create the hyperdb Database
+  mysql_db:
+    name: hyperdb
+    state: present
+
+# Removes all anonymous user accounts
+- name: Removes all anonymous user accounts
+  mysql_user:
+    name: ''
+    host: localhost
+    state: absent
+
+- name: Create user {{ ansible_user }}
+  mysql_user:
+    name: "{{ ansible_user }}"
+    password: "{{ password }}"
+    priv: '*.*:ALL'
+    state: present
+
+- name: Create user {{ ansible_user }}
+  mysql_user:
+    name: "{{ ansible_user }}"
+    host: '%'
+    password: "{{ password }}"
+    priv: '*.*:ALL'
+    state: present
+
+# Foundation Git Clone
+- stat:
+     path: /opt/foundation
+  register: git_stat
+
+- name: Clone foundation
+  command: git clone https://github.com/gandalf-the-white/foundation /opt/foundation/
+  when: git_stat.stat.isdir is not defined
+
+# Dump the Databases
+- name: Dump the Database
+  mysql_db: 
+    name: content_delivery_weather
+    state: import
+    target: /opt/foundation/sql/content_delivery_weather.sql 
+
+- name: Dump the Database
+  mysql_db: 
+    name: hyperdb
+    state: import
+    target: /opt/foundation/sql/maas.sql
+

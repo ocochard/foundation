@@ -1,0 +1,6 @@
+---
+# vars file for dbserver
+mariadb:
+  config:
+    username: root
+    password: laurent

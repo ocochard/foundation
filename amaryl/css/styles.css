@@ -1,0 +1,20 @@
+#notincludedid, #includedid, #managedid, #referenceid
+{
+   float:left;
+}
+
+#notincludedid, #includedid, #submitid
+{
+   width:270px;
+}
+
+#managedid, #referenceid
+{
+   width: 50%;
+}
+
+.form-select
+{
+   width:260px;
+   height:18;
+}

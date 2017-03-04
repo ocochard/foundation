@@ -1,0 +1,31 @@
+# vim:ft=ansible:
+---
+# Add local tunnel
+
+- name: Copy /home/{{ ansible_user }}/.ssh/config
+  template:
+     src: config.j2
+     dest: "/home/{{ ansible_user }}/.ssh/config"
+     owner: "{{ ansible_user }}"
+     group: "{{ ansible_user }}"
+     mode: 0644
+  vars:
+     user: "{{ ansible_user }}"
+
+- name: Add autossh-tunnel Service
+  template:
+     src: autossh-tunnel.j2
+     dest: /etc/systemd/system/autossh-tunnel.service
+     owner: root
+     group: root
+     mode: 0644
+  vars:
+     user: "{{ ansible_user }}"
+
+- name: Reload systemctl
+  shell: systemctl daemon-reload
+  tags: daemon
+
+- name: Start Tunnel Service
+  service: name=autossh-tunnel enabled=yes state=started
+  tags: tunnel

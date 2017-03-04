@@ -1,0 +1,5 @@
+name = Yugo Amaryl
+description = Yugo Amaryl
+core = 7.x
+dependencies[] = libraries
+package = Foundation

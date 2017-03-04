@@ -1,0 +1,335 @@
+# vim:ft=ansible:
+---
+
+# Install drupal
+- name: Loading Drupal 7.x
+  shell: /home/{{ ansible_user }}/.config/composer/vendor/bin/drush dl drupal-7 --drupal-project-rename=cdpweather
+  args:
+     chdir: /var/www/html
+
+- name: Install Drupal 7.x
+  shell: /home/{{ ansible_user }}/.config/composer/vendor/bin/drush -y site-install standard --site-name="shorty s bar" --account-name={{ ansible_user }} --account-pass={{ password }} --db-url=mysql://{{ ansible_user }}:{{ password }}@dbserver/drupaldb
+  args:
+     chdir: /var/www/html/cdpweather
+
+- name: Create the file directory
+  file:
+     path: /var/www/html/cdpweather/sites/default/files
+     state: directory
+     mode: 0777
+
+- name: Create the templates directory
+  file:
+     path: /var/www/html/cdpweather/sites/default/files/templates
+     state: directory
+     mode: 0777
+
+# Install Module Drupal
+- name: Clone foundation
+  git:
+     repo: https://github.com/gandalf-the-white/foundation.git
+     dest: /var/www/html/cdpweather/sites/all/modules/foundation
+
+- name: Install libraries module
+  get_url:
+     url: "{{ item }}"
+     dest: /var/www/html/cdpweather/sites/all/modules
+     timeout: 200
+     tmp_dest: /tmp/
+  with_items:
+     - https://ftp.drupal.org/files/projects/{{ libraries }}
+     - https://ftp.drupal.org/files/projects/{{ editor  }}
+     - https://ftp.drupal.org/files/projects/{{ date  }}
+     - https://ftp.drupal.org/files/projects/{{ jquery }}
+     - https://ftp.drupal.org/files/projects/{{ sliderfields }}
+
+- name: Unarchive modules
+  unarchive:
+     src: "{{ item }}"
+     dest: /var/www/html/cdpweather/sites/all/modules
+     remote_src: True
+  with_items:
+     - /var/www/html/cdpweather/sites/all/modules/{{ libraries }}
+     - /var/www/html/cdpweather/sites/all/modules/{{ editor  }}
+     - /var/www/html/cdpweather/sites/all/modules/{{ date  }}
+     - /var/www/html/cdpweather/sites/all/modules/{{ jquery }}
+     - /var/www/html/cdpweather/sites/all/modules/{{ sliderfields }}
+
+- name: Create Highcharts directory
+  file:
+     path: /var/www/html/cdpweather/sites/all/libraries/Highcharts/
+     state: directory
+     mode: 0755
+
+- name: Download Highcharts library
+  get_url:
+     url: http://code.highcharts.com/zips/{{ highcharts  }}
+     dest: /var/www/html/cdpweather/sites/all/libraries/Highcharts
+     timeout: 200
+     tmp_dest: /tmp/
+
+- name: Unarchive Highcharts library
+  unarchive:
+     src: /var/www/html/cdpweather/sites/all/libraries/Highcharts/{{ highcharts  }}
+     dest: /var/www/html/cdpweather/sites/all/libraries/Highcharts
+     remote_src: True
+
+- name: Create Highmaps directory
+  file:
+     path: /var/www/html/cdpweather/sites/all/libraries/Highmaps/code/js
+     state: directory
+     mode: 0755
+
+- name: Download Highmaps library
+  get_url:
+     url: http://code.highcharts.com/zips/{{ highmaps }}
+     dest: /var/www/html/cdpweather/sites/all/libraries/Highmaps/
+     timeout: 200
+     tmp_dest: /tmp/
+  tags:
+     - debug
+
+- name: Unarchivee Highmaps library
+  unarchive:
+     src: /var/www/html/cdpweather/sites/all/libraries/Highmaps/{{ highmaps }}
+     dest: /var/www/html/cdpweather/sites/all/libraries/Highmaps
+     remote_src: True
+
+- name: Download jquery-ui library
+  get_url:
+     url: https://jqueryui.com/resources/download/{{ jquery_ui }}
+     dest: /var/www/html/cdpweather/sites/all/libraries
+     timeout: 300
+     tmp_dest: /tmp/
+
+- name: Unarchive jquery-ui library
+  unarchive:
+     src: /var/www/html/cdpweather/sites/all/libraries/{{ jquery_ui }}
+     dest: /var/www/html/cdpweather/sites/all/libraries
+     remote_src: True
+
+- name: Download jquery-ui-themes library
+  get_url:
+     url: https://jqueryui.com/resources/download/{{ jquery_ui_themes }}
+     dest: /var/www/html/cdpweather/sites/all/libraries
+     timeout: 200
+     tmp_dest: /tmp/
+
+- name: Unarchive jquery-ui-themes library
+  unarchive:
+     src: /var/www/html/cdpweather/sites/all/libraries/{{ jquery_ui_themes }}
+     dest:  /var/www/html/cdpweather/sites/all/libraries
+     remote_src: True
+
+- name: Create jQuery-Timepicker-Addon directory
+  file:
+     path: /var/www/html/cdpweather/sites/all/libraries/jQuery-Timepicker-Addon/dist/
+     state: directory
+     mode: 0755
+
+- name: Download jQuery-Timepicker-Addon library
+  get_url:
+     url: http://trentrichardson.com/examples/timepicker/jquery-ui-timepicker-addon.js
+     dest: /var/www/html/cdpweather/sites/all/libraries/jQuery-Timepicker-Addon/dist/
+     timeout: 200
+     tmp_dest: /tmp/
+
+
+- name: Download jQuery-Timepicker-Addon library
+  get_url:
+     url: http://trentrichardson.com/examples/timepicker/jquery-ui-timepicker-addon.css
+     dest: /var/www/html/cdpweather/sites/all/libraries/jQuery-Timepicker-Addon/dist/
+     timeout: 200
+     tmp_dest: /tmp/
+
+
+- name: Download jQuery-Timepicker-Addon library
+  get_url:
+     url: https://raw.githubusercontent.com/trentrichardson/jQuery-SliderAccess/master/jquery-ui-sliderAccess.js
+     dest: /var/www/html/cdpweather/sites/all/libraries/jQuery-Timepicker-Addon/dist/
+     timeout: 200
+     tmp_dest: /tmp/
+
+
+- name: Download Datatables library
+  get_url:
+     url: https://datatables.net/releases/{{ DataTables }}.zip
+     dest: /var/www/html/cdpweather/sites/all/libraries/
+     timeout: 300
+     tmp_dest: /tmp/
+
+- name: Unarchive Datatables library
+  unarchive:
+     src: /var/www/html/cdpweather/sites/all/libraries/{{ DataTables }}.zip
+     dest:  /var/www/html/cdpweather/sites/all/libraries
+     remote_src: True
+
+- name: Delete old Database directory
+  file:
+     state: absent
+     path: /var/www/html/cdpweather/sites/all/libraries/DataTables
+
+- name: Rename Datables directory
+  command: mv {{ DataTables }} DataTables 
+  args:
+     chdir: /var/www/html/cdpweather/sites/all/libraries
+
+- name: Install corporateclean Theme
+  get_url: 
+     url: https://ftp.drupal.org/files/projects/{{ corporateclean }}
+     dest: /var/www/html/cdpweather/sites/all/themes
+     timeout: 200
+     tmp_dest: /tmp/
+
+
+- name: Unarchive corporateclean Theme
+  unarchive:
+     src: /var/www/html/cdpweather/sites/all/themes/{{ corporateclean }}
+     dest: /var/www/html/cdpweather/sites/all/themes
+     remote_src: True
+
+# Enable Modules
+- name: Enable all modules
+  shell: "/home/{{ ansible_user }}/.config/composer/vendor/bin/drush -y en {{ item }}"  
+  args:
+     chdir: /var/www/html/cdpweather/
+  with_items:
+     - seldon
+     - venabili
+     - reventlov
+     - hardin
+     - amaryl
+     - date_popup
+     - jquery_update
+     - sliderfield
+     - css_editor 
+
+# - name: Enable corporateclean theme
+  # shell: drush vset theme_default corporateclean
+  # args:
+     # chdir: /var/www/html/cdpweather/
+
+# Modification setting
+- name: Add cdpweather access databases for drupal
+  blockinfile:
+     dest: /var/www/html/cdpweather/sites/default/settings.php
+     block: |
+        $databases['cdpweather']['default'] = array (
+                        'database' => 'content_delivery_weather',
+                        'username' => '{{ ansible_user }}',
+                        'password' => '{{ password }}',
+                        'host'     => 'dbserver',
+                        'port'     => '',
+                        'driver'   => 'mysql',
+                        'prefix'   => '',
+        );
+
+        $databases['lxc']['default'] = array (
+                        'database' => 'hyperdb',
+                        'username' => '{{ ansible_user }}',
+                        'password' => '{{ password }}',
+                        'host'     => 'dbserver',
+                        'port'     => '',
+                        'driver'   => 'mysql',
+                        'prefix'   => '',
+        );
+
+        $conf['drupal_http_request_fails'] = FALSE;
+
+  tags:
+     - debug
+
+- name: Create the maasapi/templates directory
+  file:
+     path: /var/www/html/maasapi/templates
+     state: directory
+     mode: 0755
+
+- name: Create the newapi directory
+  file:
+     path: /var/www/html/newapi
+     state: directory
+     mode: 0755
+
+- name: Copy all maasapi php scripts
+  copy:
+     src: "/var/www/html/cdpweather/sites/all/modules/foundation/maasapi/{{ item }}"
+     dest: "/var/www/html/maasapi/{{ item }}"
+     remote_src: True
+     mode: 0755
+  with_items:
+     - ctnmethods.php
+     - getcontainers.php
+     - getimages.php
+     - updatecontainer.php
+     - updatehypervisor.php
+     - updateipcontainer.php
+  
+
+- name: Copy all newapi php scripts
+  copy:
+     src: "/var/www/html/cdpweather/sites/all/modules/foundation/newapi/{{ item }}"
+     dest: "/var/www/html/newapi/{{ item }}"
+     remote_src: True
+     mode: 0755
+  with_items:
+     - addinstant.php
+     - gethar.php
+     - geturl.php
+     - info.php
+     - methods.php
+     - update.php
+
+- name: Create HAR file temporary
+  file:
+     path: /var/www/html/newapi/file.har
+     state: touch
+     owner: root
+     group: root
+     mode: 0777
+
+# - name: Install Maxmind  Installer
+  # shell: curl -sS https://getcomposer.org/installer | php
+  # args:
+     # chdir: /var/www/html
+
+# - name: Install dependencies of Maxmind
+  # shell: php composer.phar require geoip2/geoip2:~2.0
+  # args:
+     # chdir: /var/www/html
+
+- name: Install dependencies of Maxmind
+  shell: composer require geoip2/geoip2:~2.0
+  args:
+    chdir: /var/www/html
+
+- name: Create data maxmind directory
+  file:
+     path: /var/www/html/data
+     state: directory
+     mode: 0755
+
+- name: Install GeoLite2 City 
+  shell: wget http://geolite.maxmind.com/download/geoip/database/GeoLite2-City.mmdb.gz
+  args:
+     chdir: /var/www/html/data
+
+- name: Unarchive GeoLite2-City.mmdb.gz
+  shell: gunzip -f /var/www/html/data/GeoLite2-City.mmdb.gz
+  args:
+     chdir: /var/www/html/data
+
+- name: Install GeoLite2 Country
+  shell: wget http://geolite.maxmind.com/download/geoip/database/GeoLite2-Country.mmdb.gz
+  args:
+     chdir: /var/www/html/data
+
+- name: Unarchive GeoLite2-Country.mmdb.gz
+  shell: gunzip -f /var/www/html/data/GeoLite2-Country.mmdb.gz
+  args:
+     chdir: /var/www/html/data
+        
+# Initilization Crontab
+- name: Init Cron
+  command: crontab /var/www/html/cdpweather/sites/all/modules/foundation/scripts/webcrontab
+

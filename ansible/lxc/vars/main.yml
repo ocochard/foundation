@@ -1,0 +1,4 @@
+# vim:ft=ansible:
+---
+# vars file for hypervisor
+iptables_rules_files: /etc/iptables/rules.v4

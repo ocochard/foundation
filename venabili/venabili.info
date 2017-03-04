@@ -1,0 +1,6 @@
+name = Dors Venabili
+description = Dors Venabili
+core = 7.x
+dependencies[] = libraries
+files[] = venabili.inc
+package = Foundation

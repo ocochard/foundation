@@ -1,0 +1,574 @@
+<?php
+
+function amaryl_menu() {
+   $items = array();
+
+   $items['Amaryl'] = array(
+      'title'              => 'User Manager',
+      'page callback'      => 'drupal_get_form',
+      'page arguments'     => array('amaryl_get_form'),
+      'description'        => 'Manage data',
+      'menu_name'          => 'main-menu',
+      'type'               => MENU_NORMAL_ITEM,
+      'access arguments'   => array('access amaryl content'),
+   );
+
+   $items['AmarylGetUser'] = array(
+      'title'              => 'List probes CDPWeather',
+      'page callback'      => 'amaryl_getusers_callback',
+      'page arguments'     => array(),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access amaryl content'),
+   );
+
+   $items['EditUser/%'] = array(
+      'page callback'      => 'drupal_get_form',
+      'page arguments'     => array('amaryl_edit_form', 1),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access amaryl content'),
+   );
+
+   return $items;
+}
+
+function amaryl_permission() {
+   return array(
+      'access amaryl content' => array(
+         'title' => t('Access content Yugo Amary module'),
+         'description' => t('Allow users to access the Yugo Amaryl'),
+      ));
+}
+
+function amaryl_edit_form($form, &$form_state, $data) {
+   amaryl_load_libraries();
+   $_SESSION['user'] = $data;
+
+   $email = _get_info_user($data);
+
+   $probes_included                 = isset($_SESSION['user']) ? _get_included_probe() : array();
+   $probes_not_included             = isset($_SESSION['user']) ? _get_not_included_probe() : array();
+   $managed_probes_included         = isset($_SESSION['user']) ? _get_managed_included_probe() : array();
+   $managed_probes_not_included     = isset($_SESSION['user']) ? _get_managed_not_included_probe() : array();
+   $referenced_probes_included      = isset($_SESSION['user']) ? _get_referenced_included_probe() : array();
+   $referenced_probes_not_included  = isset($_SESSION['user']) ? _get_referenced_not_included_probe() : array();
+
+
+
+   $form['probe'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Probe list to consult on '. $email),
+   );
+
+   $form['probe']['included'] = array(
+      '#type'     => 'select',
+      '#options'  => $probes_included,
+      '#multiple' => TRUE,
+      '#title'    => t('Included'),
+      '#prefix'   => '<div id="includedid">',
+      '#suffix'   => '</div>',
+      '#size'     => 10,
+      //'#default_value' => isset($form_state['values']['url']) ? $form_state['values']['url'] : '',
+   );
+
+   $form['probe']['not_included'] = array(
+      '#type'     => 'select',
+      '#options'  => $probes_not_included,
+      '#multiple' => TRUE,
+      '#title'    => t('Not included') ,
+      '#prefix'   => '<div id="notincludedid">',
+      '#suffix'   => '</div>',
+      '#size'     => 10,
+      //'#default_value' => isset($form_state['values']['url']) ? $form_state['values']['url'] : '',
+   );
+
+   $form['probe']['modifyurl'] = array(
+      '#type'        => 'submit',
+      '#value'       => t('View update'),
+      '#submit'      => array('amaryl_modify_probes',),
+      '#prefix'      => '<div id="submitid">',
+      '#suffix'      => '</div>',
+   );
+
+   $form['managed_probe'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Probe list to manage on '. $email),
+      '#prefix'      => '<div id="managedid">',
+      '#suffix'      => '</div>',
+   );
+
+   $form['managed_probe']['managed_included'] = array(
+      '#type'     => 'select',
+      '#options'  => $managed_probes_included,
+      '#multiple' => TRUE,
+      '#title'    => t('Included'),
+      '#prefix'   => '<div id="includedid">',
+      '#suffix'   => '</div>',
+      '#size'     => 10,
+      //'#default_value' => isset($form_state['values']['url']) ? $form_state['values']['url'] : '',
+   );
+
+   $form['managed_probe']['managed_not_included'] = array(
+      '#type'     => 'select',
+      '#options'  => $managed_probes_not_included,
+      '#multiple' => TRUE,
+      '#title'    => t('Not included') ,
+      '#prefix'   => '<div id="notincludedid">',
+      '#suffix'   => '</div>',
+      '#size'     => 10,
+      //'#default_value' => isset($form_state['values']['url']) ? $form_state['values']['url'] : '',
+   );
+
+   $form['managed_probe']['managedmodifyurl'] = array(
+      '#type'        => 'submit',
+      '#value'       => t('Edit update'),
+      '#submit'      => array('amaryl_managed_modify_probes',),
+      '#prefix'      => '<div id="submitid">',
+      '#suffix'      => '</div>',
+   );
+
+   $output = 'Theses lists present probes managed or not by <strong style="color:#3366FF">' . $email . '</strong><br/>';
+   $output .= 'Probes included in the first list will be modified. ';
+   $output .= '<strong style="color:#3366FF">' . $email . '</strong> could add or delete urls and <br/> ';
+   $output .= 'could modify the DNS address'; 
+   $output .= 'To modify theses lists , just select probes in the 2 boxes and click on the button';
+
+   $form['managed_probe']['information'] = array(
+      '#markup'      => $output,
+      '#prefix'      => '<div id="informationid">',
+      '#suffix'      => '</div>',
+   );
+
+   $form['managed_ref'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Probe list to reference on '. $email),
+      '#prefix'      => '<div id="referenceid">',
+      '#suffix'      => '</div>',
+   );
+
+   $form['managed_ref']['referenced_included'] = array(
+      '#type'     => 'select',
+      '#options'  => $referenced_probes_included,
+      '#multiple' => TRUE,
+      '#title'    => t('Included'),
+      '#prefix'   => '<div id="includedid">',
+      '#suffix'   => '</div>',
+      '#size'     => 10,
+      //'#default_value' => isset($form_state['values']['url']) ? $form_state['values']['url'] : '',
+   );
+
+   $form['managed_ref']['referenced_not_included'] = array(
+      '#type'     => 'select',
+      '#options'  => $referenced_probes_not_included,
+      '#multiple' => TRUE,
+      '#title'    => t('Not included') ,
+      '#prefix'   => '<div id="notincludedid">',
+      '#suffix'   => '</div>',
+      '#size'     => 10,
+      //'#default_value' => isset($form_state['values']['url']) ? $form_state['values']['url'] : '',
+   );
+
+   $form['managed_ref']['referencemodifyurl'] = array(
+      '#type'        => 'submit',
+      '#value'       => t('Ref update'),
+      '#submit'      => array('amaryl_referenced_modify_probes',),
+      '#prefix'      => '<div id="submitid">',
+      '#suffix'      => '</div>',
+   );
+
+   $output = 'Theses lists present probes referenced or not by <strong style="color:#3366FF">' . $email . '</strong><br/>';
+   $output .= '<strong style="color:#3366FF">' . $email . '</strong> will receive a mail if a problem is detected on probes ';
+   $output .= 'included in the first list <br/>' ;
+   $output .= 'To modify theses lists , just select probes in the 2 boxes and click on the button';
+
+   $form['managed_ref']['information'] = array(
+      '#markup'      => $output,
+      '#prefix'      => '<div id="informationid">',
+      '#suffix'      => '</div>',
+   );
+
+   return $form;
+}
+
+function amaryl_get_form($form, &$form_state) {
+   amaryl_load_libraries(); 
+
+   $form['description'] = array(
+      '#type' => 'item',
+      '#title' => t('Propose to manage probes on CDPWeather'),
+   );
+
+   $form['manage'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('All users'),
+   );
+
+   /*$header = array(
+      'uid'    => t('uid'),
+      'name'   => t('name'),
+      'mail'   => t('mail'),
+      'login'  => t('login'),
+      'status' => t('status'),
+   );
+
+   $rows = _getusers_callback();
+
+   $form['search']['table'] = array(
+      '#type'     => 'tableselect',
+      '#js_select'=> FALSE,
+      '#header'   => $header,
+      '#options'  => $rows,
+      '#multiple' => FALSE,
+      '#disabled' => TRUE,
+      '#empty'    => t('No content available.'),
+   );*/
+
+   $html  = '<table id="tableuser" class="display" width="100%" cellspacing="0">';
+   $html .= '<thead>';
+   $html .= '<tr>';
+   $html .= '<th>Uid</th>';
+   $html .= '<th>Name</th>';
+   $html .= '<th>Mail</th>';
+   $html .= '<th>Login</th>';
+   $html .= '<th>Status</th>';
+   $html .= '</tr>';
+   $html .= '</thead>';
+   //$html .= '<tfoot>';
+   //$html .= '<th>Uid</th>';
+   //$html .= '<th>Name</th>';
+   //$html .= '<th>Mail</th>';
+   //$html .= '<th>Login</th>';
+   //$html .= '<th>Status</th>';
+   //$html .= '</tfoot>';
+   $html .= '</table>';
+
+   $form['manage']['tableprobe'] = array(
+      '#markup'   => '<div id="tableuserid">' . $html . '</div>',
+   );
+
+   return $form;
+}
+
+function amaryl_modify_probes($form, &$form_state) {
+   _modify_probes($form, $form_state);
+
+   $form_state['rebuild']=TRUE;
+}
+
+function amaryl_managed_modify_probes($form, &$form_state) {
+   _managed_modify_probes($form, $form_state);
+
+   $form_state['rebuild']=TRUE;
+}
+
+function amaryl_referenced_modify_probes($form, &$form_state) {
+   _referenced_modify_probes($form, $form_state);
+
+   $form_state['rebuild']=TRUE;
+}
+
+function _modify_probes($form, $form_state) {
+
+   if (isset($_SESSION['user'])) {
+
+      if (isset($form_state['values']['not_included'])) {
+         foreach($form_state['values']['not_included'] as $probe) {
+            db_set_active('cdpweather');
+            db_query("insert into {new_v4_users_probes} (userid,probeid) select :userid, s.probeid from {new_v4_sonde} s where s.probename = :probename", array('userid' =>  $_SESSION['user'], ':probename' => $probe));
+            db_set_active();
+         }
+      }
+      if (isset($form_state['values']['included'])) {
+         foreach($form_state['values']['included'] as $probe) {
+            db_set_active('cdpweather');
+            $resulturl = db_query("select s.probeid from {new_v4_sonde} s where s.probename = :probename",array(':probename' => $probe)); 
+            db_set_active();
+            foreach($resulturl as $item) {
+               db_set_active('cdpweather');
+               db_query("delete from {new_v4_users_probes} where userid = :userid and probeid = :probeid", array(':userid' => $_SESSION['user'], ':probeid' => $item->probeid));
+               db_set_active();
+            }
+         }
+      }
+   }
+}
+
+function _managed_modify_probes($form, $form_state) {
+
+   if (isset($_SESSION['user'])) {
+
+      db_set_active('drupal');
+      $result = db_query("SELECT mail FROM users WHERE uid = :uid", array(':uid' => $_SESSION['user']));
+      db_set_active();
+
+      foreach($result as $item) {
+         if (isset($form_state['values']['managed_not_included'])) {
+            foreach($form_state['values']['managed_not_included'] as $probe) {
+               db_set_active('cdpweather');
+               db_query("insert into {new_v4_users_probes_edit} (userid,probeid,email,ref) select :userid, s.probeid, :email, 0 from {new_v4_sonde} s where s.probename = :probename", array('userid' =>  $_SESSION['user'], ':probename' => $probe, ':email' => $item->mail));
+               db_set_active();
+            }
+         }
+         if (isset($form_state['values']['managed_included'])) {
+            foreach($form_state['values']['managed_included'] as $probe) {
+               db_set_active('cdpweather');
+               $resulturl = db_query("select s.probeid from {new_v4_sonde} s where s.probename = :probename",array(':probename' => $probe)); 
+               db_set_active();
+               foreach($resulturl as $item) {
+                  db_set_active('cdpweather');
+                  db_query("delete from {new_v4_users_probes_edit} where userid = :userid and probeid = :probeid", array(':userid' => $_SESSION['user'], ':probeid' => $item->probeid));
+                  db_set_active();
+               }
+            }
+         }
+      }
+   }
+}
+
+function _referenced_modify_probes($form, $form_state) {
+   if (isset($_SESSION['user'])) {
+
+      if (isset($form_state['values']['referenced_included'])) {
+         foreach($form_state['values']['referenced_included'] as $probe) {
+            db_set_active('cdpweather');
+            $resulturl = db_query("select s.probeid from {new_v4_sonde} s where s.probename = :probename",array(':probename' => $probe));
+            db_set_active();
+            foreach($resulturl as $item) {
+               db_set_active('cdpweather');
+               db_query("UPDATE {new_v4_users_probes_edit} SET ref = 0 WHERE userid = :userid AND probeid = :probeid", array(':userid' => $_SESSION['user'], ':probeid' => $item->probeid));
+               db_set_active(); 
+            }
+         }
+      }
+
+      if (isset($form_state['values']['referenced_not_included'])) {
+         foreach($form_state['values']['referenced_not_included'] as $probe) {
+            db_set_active('cdpweather');
+            $resulturl = db_query("select s.probeid from {new_v4_sonde} s where s.probename = :probename",array(':probename' => $probe));
+            db_set_active();
+            foreach($resulturl as $item) {
+               db_set_active('cdpweather');
+               db_query("UPDATE {new_v4_users_probes_edit} SET ref = 1 WHERE userid = :userid AND probeid = :probeid", array(':userid' => $_SESSION['user'], ':probeid' => $item->probeid));
+               db_set_active(); 
+            }
+         }
+      }
+   }
+}
+
+function _get_info_user($data) {
+   if(isset($_SESSION['user'])) {
+      db_set_active('default');
+      $result = db_query("SELECT u.mail FROM {users} u where u.uid = :userid", array(':userid' => $_SESSION['user']));
+      db_set_active();
+
+      foreach ($result as $row) {
+         return $row->mail;
+      }
+   }
+}
+
+function amaryl_getusers_callback() {
+   db_set_active('default');
+   $result = db_query("SELECT u.uid, u.name, u.mail, u.login, u.status FROM {users} u where u.uid != 0");
+   db_set_active();
+
+   $rows = array();
+
+   foreach ($result as $row) {
+      $rows[] = array(
+         l($row->uid, 'EditUser/'. $row->uid),
+         l($row->name, 'EditUser/'. $row->uid),
+         l($row->mail, 'EditUser/'. $row->uid),
+         l($row->login, 'EditUser/'. $row->uid),
+         l($row->status, 'EditUser/'. $row->uid),
+      );
+   }
+
+   $output = array();
+   $output['data'] = array();
+   $output['data'] = $rows;
+
+   echo json_encode($rows);
+
+   //return $rows;
+}
+
+
+function _getusers_callback() {
+   db_set_active('default');
+   $result = db_query("SELECT u.uid, u.name, u.mail, u.login, u.status FROM {users} u where u.uid != 0");
+   db_set_active();
+
+   $rows = array();
+
+   foreach ($result as $row) {
+      $rows[] = array(
+         'uid'    => l($row->uid, 'EditUser/'. $row->uid),
+         'name'   => l($row->name, 'EditUser/'. $row->uid),
+         'mail'   => l($row->mail, 'EditUser/'. $row->uid),
+         'login'  => l($row->login, 'EditUser/'. $row->uid),
+         'status' => l($row->status, 'EditUser/'. $row->uid),
+      );
+   }
+
+   return $rows;
+}
+
+function _get_included_probe() {
+   $list_probe = array();
+
+   if(isset($_SESSION['user'])) {
+      db_set_active('cdpweather');
+      $result = db_query("SELECT s.probename from {new_v4_sonde} s inner join {new_v4_users_probes} p on s.probeid = p.probeid where p.userid = :userid", array(':userid' => $_SESSION['user']));
+      db_set_active();
+
+      foreach($result as $item) {
+         $list_probe[] = $item->probename;
+      }
+   }
+
+   return drupal_map_assoc($list_probe);
+}
+
+function _get_managed_included_probe() {
+   $list_probe = array();
+
+   if(isset($_SESSION['user'])) {
+      db_set_active('cdpweather');
+      $result = db_query("SELECT s.probename from {new_v4_sonde} s inner join {new_v4_users_probes_edit} p on s.probeid = p.probeid where p.userid = :userid", array(':userid' => $_SESSION['user']));
+      db_set_active();
+
+      foreach($result as $item) {
+         $list_probe[] = $item->probename;
+      }
+   }
+
+   return drupal_map_assoc($list_probe);
+}
+
+function _get_referenced_included_probe() {
+   $list_probe = array();
+
+   if(isset($_SESSION['user'])) {
+      db_set_active('cdpweather');
+      $result = db_query("SELECT s.probename FROM {new_v4_sonde} s inner join {new_v4_users_probes_edit} p on s.probeid = p.probeid WHERE p.userid = :userid AND p.ref = 1", array(':userid' => $_SESSION['user']));
+      db_set_active();
+
+      foreach($result as $item) {
+         $list_probe[] = $item->probename;
+      }
+   }
+
+   return drupal_map_assoc($list_probe);
+}
+
+function _get_not_included_probe() {
+   $list_probe = array();
+   $included_probe = array();
+
+   if(isset($_SESSION['user'])) {
+      db_set_active('cdpweather');
+      $result = db_query("SELECT s.probename FROM {new_v4_sonde} s");
+      db_set_active();
+
+      foreach($result as $item) {
+         $list_probe[] = $item->probename;
+      }
+
+
+      db_set_active('cdpweather');
+      $result = db_query("SELECT s.probename from {new_v4_sonde} s inner join {new_v4_users_probes} p on s.probeid = p.probeid where p.userid = :userid", array(':userid' => $_SESSION['user']));
+      db_set_active();
+
+      foreach($result as $item) {
+         $included_probe[] = $item->probename;
+      }
+
+      $not_included_probe = array_diff($list_probe, $included_probe);
+
+      //drupal_set_message(print_r($list_url, TRUE));
+      //drupal_set_message(print_r($included_url, TRUE));
+      //drupal_set_message(print_r($not_included_url, TRUE));
+
+   }
+
+   return drupal_map_assoc($not_included_probe);
+}
+
+function _get_managed_not_included_probe() {
+   $list_probe = array();
+   $included_probe = array();
+
+   if(isset($_SESSION['user'])) {
+      db_set_active('cdpweather');
+      $result = db_query("SELECT s.probename FROM {new_v4_sonde} s");
+      db_set_active();
+
+      foreach($result as $item) {
+         $list_probe[] = $item->probename;
+      }
+
+
+      db_set_active('cdpweather');
+      $result = db_query("SELECT s.probename from {new_v4_sonde} s inner join {new_v4_users_probes_edit} p on s.probeid = p.probeid where p.userid = :userid", array(':userid' => $_SESSION['user']));
+      db_set_active();
+
+      foreach($result as $item) {
+         $included_probe[] = $item->probename;
+      }
+
+      $not_included_probe = array_diff($list_probe, $included_probe);
+
+      //drupal_set_message(print_r($list_url, TRUE));
+      //drupal_set_message(print_r($included_url, TRUE));
+      //drupal_set_message(print_r($not_included_url, TRUE));
+
+   }
+
+   return drupal_map_assoc($not_included_probe);
+}
+
+function _get_referenced_not_included_probe() {
+   //$list_probe = array();
+   $not_included_probe = array();
+
+   if(isset($_SESSION['user'])) {
+      //db_set_active('cdpweather');
+      //$result = db_query("SELECT s.probename FROM {new_v4_sonde} s");
+      //db_set_active();
+
+      //foreach($result as $item) {
+      //   $list_probe[] = $item->probename;
+      //}
+
+
+      db_set_active('cdpweather');
+      $result = db_query("SELECT s.probename from {new_v4_sonde} s inner join {new_v4_users_probes_edit} p on s.probeid = p.probeid WHERE p.userid = :userid AND p.ref = 0", array(':userid' => $_SESSION['user']));
+      db_set_active();
+
+      foreach($result as $item) {
+         $not_included_probe[] = $item->probename;
+      }
+
+      //$not_included_probe = array_diff($list_probe, $included_probe); 
+   }
+
+   return drupal_map_assoc($not_included_probe);
+}
+
+
+function amaryl_load_libraries() {
+   drupal_add_css(drupal_get_path('module', 'amaryl') . '/css/styles.css');
+   drupal_add_css(drupal_get_path('module', 'amaryl') . '/css/highcharts.css');
+
+   drupal_add_js(libraries_get_path('Highcharts') . '/code/js/highcharts.js');
+   drupal_add_js(libraries_get_path('Highcharts') . '/code/js/modules/exporting.js');
+
+   //drupal_add_css(libraries_get_path('DataTables-1.10.12') . '/media/css/dataTables.bootstrap.css');
+   drupal_add_css(libraries_get_path('DataTables') . '/media/css/dataTables.foundation.css');
+   drupal_add_js (libraries_get_path('DataTables') . '/media/js/jquery.dataTables.js');
+
+   drupal_add_js(drupal_get_path('module', 'amaryl') . '/js/user.js');
+}
+
+

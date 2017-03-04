@@ -1,0 +1,406 @@
+<?php
+
+function seldon_menu() {
+   $items  = array();
+
+   //$items['Explorer'] = array(
+   $items['Seldon'] = array(
+      'title'              => 'Probe Explorer',
+      'page callback'      => 'drupal_get_form',
+      //'page callback'      => 'inter_seldon_form',
+      'page arguments'     => array('seldon_form'),
+      'description'        => 'Explore data',
+      'menu_name'          => 'main-menu',
+      'type'               => MENU_NORMAL_ITEM,
+      'file'               => 'seldon.inc',
+      'access arguments'   => array('access seldon content'),
+   );
+
+   $items['SeldonTimelineRequest'] = array(
+      'page callback'      => '_timeline_request_callback',
+      'page arguments'     => array(),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access seldon content'),
+      'file'               => "seldon_timeline_request.inc",
+   );
+
+   $items['SeldonSearchingRequest'] = array(
+      'page callback'      => '_searching_request_callback',
+      'page arguments'     => array(),
+      'type'               => MENU_CALLBACK,
+      'access arguments'   => array('access seldon content'),
+      'file'               => "seldon_searching_request.inc",
+   );
+
+   return $items;
+}
+
+function seldon_permission() {
+   return array(
+      'access seldon content' => array(
+         'title' => t('Access content Hari Seldon module'),
+         'description' => t('Allow users to access the Hari Seldon'),
+      ));
+}
+
+function seldon_introduction() {
+   $markup = t('Related to CDPWeather');
+   return array('#markup' => $markup);
+}
+
+function seldon_form($form, &$form_state) {
+   load_libraries();
+
+   if (!empty($form_state['values']['date']) ){
+      $list_probe = _getListProbes($form_state['values']['date']);
+   } else {
+      if(isset($_SESSION)) {
+         unset($_SESSION);
+      }
+   }
+
+
+   $form['description'] = array(
+      '#type' => 'item',
+      '#title' => t('Propose to search and presente data more friendly'),
+   ); 
+
+   $form['search'] = array(
+      '#type' => 'fieldset',
+      '#title' => t('Input Information'),
+   );
+
+   $form['search']['date'] = array(
+      '#type'                 => 'date_popup',
+      '#date_format'          => 'd.m.Y',
+      '#datepicker_options'   => array( 'maxDate' => 0 ),
+      '#prefix'               => '<div id="dateid">',
+      '#suffix'               => '</div>',
+      '#ajax' => array(
+         'callback'  => '_probe_callback',
+         'wrapper'   => 'probeid',
+         'method'    => 'replace',
+         'effect'    => 'fade',
+      ),
+   );
+
+
+   if (isset($_SESSION) && !empty($_SESSION['probes']) && !empty($form_state['values']['date']) ){
+      //$list_probe = array_keys($_SESSION['probes']);
+      $list_probe = drupal_map_assoc($_SESSION['listprobes']);
+      $form['search']['probes'] = array(
+         '#type'     => 'select',
+         '#title'    => t('Probes'),
+         '#options'  => $list_probe,
+         '#multiple' => TRUE,
+         '#prefix'   => '<div id="probeid">',
+         '#suffix'   => '</div>',
+         '#size'     => 10,
+         '#ajax' => array(
+            'callback'  => '_url_callback',
+            'wrapper'   => 'urlid',
+            'method'    => 'replace',
+            'effect'    => 'fade',
+         ),
+      );
+   } else {
+      $form['search']['probes'] = array(
+         '#type'     => 'item',
+         '#prefix'   => '<div id="probeid">',
+         '#suffix'   => '</div>',
+      );
+   }
+
+
+   if (isset($_SESSION) && !empty($_SESSION['probes']) && !empty($form_state['values']['probes']) ){
+      $list_url = _getCommonUrls( $list_probe, $form_state['values']['probes']);
+      if (count($list_url) > 0) {
+         $form['search']['urls'] = array(
+            '#type'     => 'select',
+            '#title'    => t('Urls'),
+            '#options'  => $list_url,
+            '#multiple' => TRUE,
+            '#prefix'   => '<div id="urlid">',
+            '#suffix'   => '</div>',
+            '#size'     => 10,
+            '#ajax' => array(
+               'callback'  => '_search_callback',
+               'wrapper'   => 'afterid',
+               'effect'    => 'fade',
+            ),
+         );
+      } else {
+         $form['search']['urls'] = array(
+            '#type'     => 'item',
+            '#prefix'   => '<div id="urlid">',
+            '#suffix'   => '</div>',
+         );
+      }
+   } else {
+      $form['search']['urls'] = array(
+         '#type'     => 'item',
+         '#prefix'   => '<div id="urlid">',
+         '#suffix'   => '</div>',
+      );
+   }
+
+   $form['search']['after'] = array(
+      '#type'     => 'item',
+      '#prefix'   => '<div id="afterid">',
+      '#suffix'   => '</div>',
+   );
+
+   drupal_add_js(drupal_get_path('module', 'seldon') . '/js/level.js');
+
+   if (isset($_SESSION) && !empty($_SESSION['probes']) && !empty($form_state['values']['urls']) ){
+      if (count($list_url) > 0) {
+         $form['search']['after']['level'] = array(
+            '#type' => 'slider',
+            '#title' => 'Percentage',
+            '#max' => 100,
+            '#min' => 0,
+            '#orientation' => 'vertical',
+            '#range' => 'min',
+            '#step' => 1,
+            '#default_value' => 0,
+            '#slider_style' => 'blue',
+            '#display_inputs' => TRUE,
+            '#display_values' => FALSE,
+            '#display_values_format' => '%{value}%',
+            '#slider_length' => NULL,
+            '#prefix' => '<div id="sliderid">',
+            '#suffix' => '</div>',
+         );
+         
+       $form['search']['after']['days'] = array(
+            '#type' => 'slider',
+            '#title' => 'Days',
+            '#max' => 7,
+            '#min' => 1,
+            '#orientation' => 'vertical',
+            '#range' => 'min',
+            '#step' => 1,
+            '#default_value' => 1,
+            '#slider_style' => 'blue',
+            '#display_inputs' => TRUE,
+            '#display_values' => FALSE,
+            // '#display_values_format' => '%{value}%',
+            '#slider_length' => NULL,
+            '#prefix' => '<div id="sliderid">',
+            '#suffix' => '</div>',
+         );
+
+         $form['search']['after']['submit'] = array(
+            '#type' => 'submit',
+            '#value' => 'Submit',
+            '#prefix' => '<div id="submitid">',
+            '#suffix' => '</div>',
+            '#ajax' => array(
+               'callback'  => '_submit_callback',
+               'wrapper'   => 'searchingid',
+               'effect'    => 'fade',
+            ),
+         );
+      } else {
+         $form['search']['after']['level'] = array(
+            '#type'     => 'item', 
+            '#prefix'   => '<div id="sliderid">',
+            '#suffix'   => '</div>',
+         );
+
+         $form['search']['after']['submit'] = array(
+            '#type'     => 'item',
+            '#prefix'   => '<div id="submitid">',
+            '#suffix'   => '</div>',
+         );	
+      }
+   } else {
+      $form['search']['after']['level'] = array(
+         '#type'     => 'item', 
+         '#prefix'   => '<div id="sliderid">',
+         '#suffix'   => '</div>',
+      );
+
+      $form['search']['after']['submit'] = array(
+         '#type'     => 'item',
+         '#prefix'   => '<div id="submitid">',
+         '#suffix'   => '</div>',
+      );
+   }
+
+   $form['graphs'] = array(
+      '#type' => 'item',
+      '#prefix' => '<div id="searchingid">',
+      '#suffix' => '</div>',
+   );
+
+   return $form;
+}
+
+
+function _probe_callback($form, $form_state) {
+   $select1    = $form['search']['probes'];
+   $select2    = $form['search']['urls'];
+   $select3    = $form['search']['after'];
+
+   $commands = array();
+   $commands[] = ajax_command_replace('#probeid',     drupal_render($select1));
+   $commands[] = ajax_command_replace('#urlid',       drupal_render($select2));
+   $commands[] = ajax_command_replace('#afterid',   	drupal_render($select3));
+
+   //print_r($_SESSION['date']); 
+
+   return array('#type' => 'ajax', '#commands' => $commands);
+}
+
+/*function __probe_callback($form, $form_state) {
+   return $form['search']['probes'];
+}*/
+
+function _url_callback($form, $form_state) {
+   $select1    = $form['search']['urls'];
+   $select2    = $form['search']['after']; 
+
+   $commands = array();
+   $commands[] = ajax_command_replace('#urlid',     drupal_render($select1));
+   $commands[] = ajax_command_replace('#afterid',   drupal_render($select2));
+
+   //print_r($_SESSION); 
+   return array('#type' => 'ajax', '#commands' => $commands);  
+}
+
+/*function __url_callback($form, $form_state) {
+   return $form['search']['urls'];
+}*/
+
+function _search_callback($form, $form_state) {
+   //print_r($_SESSION['date']); 
+   return $form['search']['after'];
+}
+
+/*form_state
+ * CallBack
+ */
+
+
+/*function submission_list_reset($form, &$form_state) {
+   $form_state['values']['dates'] = '';
+}*/
+
+/*function url_callback($form, $form_state) {
+   $_SESSION = NULL;
+
+   $_SESSION['probes'] = $form_state['values']['probe'];
+
+   $select1 = $form['search']['after']['url'];
+   $select2 = $form['search']['after']['dates'];
+   $select3 = $form['search']['after']['per'];
+
+
+   $commands   = array();
+   $commands[] = ajax_command_replace('#urlid',    drupal_render($select1));
+   $commands[] = ajax_command_replace('#dateid',   drupal_render($select2));
+   $commands[] = ajax_command_replace('#sliderid', drupal_render($select3));
+
+   //$commands[] = ajax_command_replace(NULL, drupal_render($form));
+
+   return array('#type' => 'ajax', '#commands' => $commands);
+}*/
+
+/*function time_callback($form, $form_state) {
+   $_SESSION['url'] = $form_state['values']['url'];
+
+   return $form['search']['dates'];
+}*/
+
+//function seldon_form_submit($form, &$form_state) {
+function _submit_callback($form, &$form_state) {
+   //global $_SESSION;
+   //print_r($form_state['values']['date']);
+   // To pass data to the request process function
+   //unset($_SESSION);
+
+   //$_SESSION['probes']  = $form_state['values']['probes'];
+   //$_SESSION['urls']    = $form_state['values']['urls'];
+   $_SESSION['date']    = $form_state['values']['date'];
+   $_SESSION['level']   = $form_state['values']['level']['value'];
+   $_SESSION['days']    = $form_state['values']['days']['value'];
+   //$_SESSION['per']     = $form_state['values']['per'];
+   //2016-03-07
+
+   //drupal_set_message(print_r($_SESSION['level'], true), 'warning');
+   $containers = array();
+
+   //print_r($_SESSION); 
+
+   foreach ($form_state['values']['urls'] as $url_key => $url_value) {
+      foreach ($form_state['values']['probes'] as $probe_key => $probe_value) {
+         $container = uniqid();
+         $containers[] = [ 'container' => $container, 'probe' => $probe_key, 'url' => $url_key, 'date' => $_SESSION['date'], 'level' => $_SESSION['level'], 'days' => $_SESSION['days']];
+
+         $form['graphs'][$url_key.'@'.$probe_key] = array(
+            '#type' => 'fieldset',
+            '#title' => t($url_key.'@'.$probe_key),
+         );
+
+         $form['graphs'][$url_key.'@'.$probe_key]['cdpweather_'.$url_key.'@'.$probe_key] = array(
+            '#type' => 'fieldset',
+            '#title' => t('[R.CDP.Weather] '.$url_key.'@'.$probe_key),
+         );
+
+         $form['graphs'][$url_key.'@'.$probe_key]['cdpweather_'.$url_key.'@'.$probe_key]['mainview'] = array(
+            '#markup'   => '<div id="' . $container . '"></div>',
+            '#prefix' => '<div id="mainview">',
+            '#suffix' => '</div>',
+         );
+
+         $form['graphs'][$url_key.'@'.$probe_key]['cdpweather_'.$url_key.'@'.$probe_key]['chartaview'] = array(
+            '#markup'   => '<div id="a' . $container . '"></div>',
+            '#prefix' => '<div id="chartaview">',
+            '#suffix' => '</div>',            
+         );
+
+         $form['graphs'][$url_key.'@'.$probe_key]['cdpweather_'.$url_key.'@'.$probe_key]['chartbview'] = array(
+            '#markup'   => '<div id="b' . $container . '"></div>',
+            '#prefix' => '<div id="chartbview">',
+            '#suffix' => '</div>',
+         );
+
+         $form['graphs'][$url_key.'@'.$probe_key]['tdpweather_'.$url_key.'@'.$probe_key] = array(
+            '#type' => 'fieldset',
+            '#title' => t('[R.TDP.Weather] '.$url_key.'@'.$probe_key),
+         );
+
+
+         $form['graphs'][$url_key.'@'.$probe_key]['tdpweather_'.$url_key.'@'.$probe_key]['timeview'] = array(
+            '#markup'   => '<div id="t' . $container . '"></div>',
+            '#prefix' => '<div id="timeview">',
+            '#suffix' => '</div>',
+         );
+         
+         $form['graphs'][$url_key.'@'.$probe_key]['tdpweather_'.$url_key.'@'.$probe_key]['statview'] = array(
+            '#markup'   => '<div id="d' . $container . '"></div>',
+            '#prefix' => '<div id="statview">',
+            '#suffix' => '</div>',
+         );
+      }
+   }
+   drupal_add_js(drupal_get_path('module', 'seldon') . '/js/graphic.js');
+   $settings = array('containers' => $containers);
+   drupal_add_js(array('seldon' => $settings), 'setting');
+
+   return $form['graphs'];
+}
+
+
+function load_libraries() {
+   drupal_add_css(drupal_get_path('module', 'seldon') . '/css/styles.css');
+   drupal_add_css(drupal_get_path('module', 'seldon') . '/css/highcharts.css');
+
+   drupal_add_js(libraries_get_path('jquery-ui-1.10.4')   . '/ui/jquery-ui.js');
+   drupal_add_css(libraries_get_path('jquery-ui-themes-1.10.4')  . '/themes/smoothness/jquery-ui.css');
+
+   drupal_add_js(libraries_get_path('Highcharts') . '/code/js/highcharts.js');
+   drupal_add_js(libraries_get_path('Highcharts') . '/code/js/modules/exporting.js');
+   // drupal_add_js(drupal_get_path('module', 'seldon') . '/js/level.js');
+}

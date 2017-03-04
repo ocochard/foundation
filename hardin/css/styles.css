@@ -1,0 +1,9 @@
+#virtualtypeid
+{
+   float:left;
+}
+
+#fileid, #editnameid, #virtualtypeid
+{
+   width: 250px;
+}
