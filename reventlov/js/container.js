@@ -72,7 +72,7 @@
                      $('#tablecontainer tbody').on('click', 'tr', function() {
                         var containerid = table.row( this ).data()[1];
                         console.log(containerid);
-                        $.getJSON('/cdpweather/GetLoadContainer/'+ containerid, function(data){
+                        $.getJSON('/GetLoadContainer/'+ containerid, function(data){
                            container_graphic_memory(data);
                            container_graphic_network(data);
                         });

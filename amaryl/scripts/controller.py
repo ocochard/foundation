@@ -20,7 +20,7 @@ cursor = conn.cursor()
 ############################################################
 
 def sendmail(to, subject, text):
-   username = 'XXXXX'
+   username = 'spynet.rd.francetelecom.fr@orange.com'
    #password = 'XXXXX'
 
    msg = MIMEText(text)

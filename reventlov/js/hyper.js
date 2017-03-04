@@ -40,7 +40,7 @@
                });
                $('#tablehyper tbody').on('click', 'tr', function() { 
                   var hyperid = dt.row( this ).data()[0];
-                  $.getJSON('/cdpweather/GetLoadHyper/'+ hyperid, function(data){
+                  $.getJSON('/GetLoadHyper/'+ hyperid, function(data){
                      hyper_graphic(data, hyperid);
                   }); 
                }); 
@@ -49,7 +49,7 @@
 
 
       function request(id) {
-         $.getJSON('/cdpweather/GetLoadHyper/'+ id, function(data){
+         $.getJSON('/GetLoadHyper/'+ id, function(data){
             return data;
          });
       }

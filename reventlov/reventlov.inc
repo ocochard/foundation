@@ -395,6 +395,7 @@ function add_profile_container($data) {
             } else {
                //drupal_set_message("URL doesn't exists.");
                db_set_active('cdpweather');
+               $url = trim($url);
                db_insert('new_v4_url')
                   ->fields(array(
                      'urlname'   => $url,

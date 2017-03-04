@@ -1,4 +1,5 @@
-#mainview, #chartaview, #chartbview, #timeview, #statview , #probeid, #urlid, #dateid, #sliderid, #afterid, #submitid{
+#mainview, #chartaview, #chartbview, #timeview, #statview , #toolid, #hyperid, #probeid, #urlid, #dateid, #sliderid, #afterid, #submitid
+{
    float:left;
 }
 
@@ -20,6 +21,17 @@
 #probeid, #urlid
 {
    width:270px;
+}
+
+
+#toolid, #hyperid
+{
+   margin-right: 10px;
+}
+
+#edit-hypervisors, #edit-tools
+{
+   width:150px;
 }
 
 #afterid

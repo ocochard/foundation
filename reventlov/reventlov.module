@@ -1406,7 +1406,7 @@ function reventlov_fileurl_form_submit($form, &$form_state) {
             $contents = file($file_upload->uri);
             foreach($contents as $key => $line){
 
-               //$line = trim($line);
+               $line = trim($line);
                //$info = explode(";", $line);
                //$data['extip'] = trim($info[0]);
                //$data['dns']   = trim($info[0]);
@@ -1417,9 +1417,10 @@ function reventlov_fileurl_form_submit($form, &$form_state) {
                   $content .= $string . ';';
                   //drupal_set_message("OK: " . $line);
                } else {
-                  $content .= $string . ";";
+                  //$content .= $string . ";";
                   //drupal_set_message("KO: " . $line);
                }
+               //drupal_set_message($string);
             } 
             $dataprofile['content'] = $content;
             add_profile($dataprofile);
