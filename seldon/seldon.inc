@@ -1,59 +1,5 @@
 <?php
 
-function _gettools($hyper) {
-   global $user;
-   $userId = $user->uid;
-
-   $tmp_imagename = array();
-
-   db_set_active('lxc');
-   $queryhyper = db_select('hypervisor','h')
-      ->fields('h')
-      ->condition('hyperid',$hyper)
-      ->execute();
-   db_set_active();
-
-   foreach($queryhyper as $rowhyper) {
-      db_set_active('lxc');
-      $querycontainer = db_select('container', 'c')
-         ->fields('c')
-         ->condition('hyperid', $rowhyper->hyperid)
-         ->execute();
-      db_set_active();
-
-      foreach ($querycontainer as $rowcontainer) {
-         $tmp_imagename[] = $rowcontainer->imagename;
-      }
-   }
-
-   return drupal_map_assoc($tmp_imagename);
-}
-
-function _getListHypers(){
-   global $user;
-   $userId = $user->uid;
-
-   $tmp_hypers = array();
-   $tmp_hypers[] = 'Select';
-
-   db_set_active('lxc');
-
-   // $result = db_query("SELECT s.probename FROM {new_v4_sonde} s inner join {new_v4_users_probes} u on s.probeid = u.probeid where u.userid = :userid", array(':userid' => $userId));
-   $result = db_query("SELECT h.hypername FROM {hypervisor} h");
-   //$query = db_select('new_v4_sonde', 's');
-   //$query->fields('s', array('probename;'));
-   //$result = $query->execute();
-
-   db_set_active();
-
-   foreach ($result as $record) {
-      $tmp_hypers[] = $record->hypername;
-   }
-
-   return drupal_map_assoc($tmp_hypers);
-}
-
-
 function _getListProbes( $date ) {
    global $_SESSION;
    //2016-05-09

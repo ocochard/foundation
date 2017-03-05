@@ -49,7 +49,7 @@ function seldon_introduction() {
 }
 
 function seldon_form($form, &$form_state) {
-    load_libraries();
+   load_libraries();
 
    if (!empty($form_state['values']['date']) ){
       $list_probe = _getListProbes($form_state['values']['date']);
@@ -70,39 +70,12 @@ function seldon_form($form, &$form_state) {
       '#title' => t('Input Information'),
    );
 
-   $list_hypers = _getListHypers();
-
-   $form['search']['hypervisors'] = array(
-      '#type'     => 'select',
-      '#title'    => t('Hypervisors'),
-      // '#required' => true,
-      '#default_value' => '',
-      '#options'  => $list_hypers,
-      '#prefix'               => '<div id="hyperid">',
-      '#suffix'               => '</div>',
-   );
-
-/*    $form['search']['tools'] = array( */
-      // '#type'     => 'select',
-      // '#title'    => t('Tools'),
-      // // '#required' => true,
-      // '#default_value' => '',
-      // '#options'  => $list_hypers,
-      // '#prefix'               => '<div id="toolid">',
-      // '#suffix'               => '</div>',
-   // );
-
    $form['search']['date'] = array(
       '#type'                 => 'date_popup',
       '#date_format'          => 'd.m.Y',
       '#datepicker_options'   => array( 'maxDate' => 0 ),
       '#prefix'               => '<div id="dateid">',
       '#suffix'               => '</div>',
-      '#states' => array(
-         'invisible' => array(
-            'select[name="hypervisors"]' => array('value' => 'Select'),
-         )
-      ),
       '#ajax' => array(
          'callback'  => '_probe_callback',
          'wrapper'   => 'probeid',

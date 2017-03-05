@@ -84,6 +84,28 @@ CREATE TABLE IF NOT EXISTS `image` (
    KEY `imagename` (`imagename`)
 ) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
 
+DROP TABLE IF EXISTS `network`;
+
+CREATE TABLE IF NOT EXISTS `network` (
+   `networkid` int(11) unsigned NOT NULL AUTO_INCREMENT,
+   `networkname` varchar(255) NOT NULL,
+   `information` varchar(255) NOT NULL,
+   `status` tinyint(1) NOT NULL, 
+   PRIMARY KEY (`networkid`),
+   KEY `networkname` (`networkname`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
+DROP TABLE IF EXISTS `link`;
+
+CREATE TABLE IF NOT EXISTS `link` (
+   `linkid` int(11) unsigned NOT NULL AUTO_INCREMENT,
+   `networkid` int(11) unsigned NOT NULL,
+   `containerid` int(11) unsigned NOT NULL,
+   PRIMARY KEY (`linkid`),
+   KEY `networkid` (`networkid`),
+   KEY `containerid` (`containerid`)
+) ENGINE=MyISAM DEFAULT CHARSET=latin1 AUTO_INCREMENT=1 ;
+
 DROP TABLE IF EXISTS `profile`;
 
 CREATE TABLE IF NOT EXISTS `profile` (

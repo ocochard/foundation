@@ -1,0 +1,2 @@
+SHELL=/bin/bash
+*/10 * * * * /home/spike/Projects/Vasilia/scripts/update_routing.sh > /dev/null 2>&1
