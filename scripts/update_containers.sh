@@ -76,12 +76,12 @@ function The_config_docker()
    echo "name: $name"
    echo "iso: $iso"
    echo "crontab: $crontab"
-   echo "#!/bin/bash" > /tmp/$CONTAINER_ID
-   echo "" >> /tmp/$CONTAINER_ID
+   echo "#!/bin/bash" > /tmp/$name
+   echo "" >> /tmp/$name
    # echo "croncmd=\"/opt/dockbaley/scripts/process.sh\"" >> /tmp/$CONTAINER_ID
-   echo "croncmd=\"$command\"" >> /tmp/$CONTAINER_ID
-   echo "cronjob=\"$crontab \$croncmd\"" >> /tmp/$CONTAINER_ID
-   echo "( crontab -l | grep -v \"\$croncmd\" ; echo \"\$cronjob\" ) | crontab -" >> /tmp/$CONTAINER_ID
+   echo "croncmd=\"$command\"" >> /tmp/$name
+   echo "cronjob=\"$crontab \$croncmd\"" >> /tmp/$name
+   echo "( crontab -l | grep -v \"\$croncmd\" ; echo \"\$cronjob\" ) | crontab -" >> /tmp/$name
 }
 
 
@@ -99,7 +99,7 @@ function _start_container()
 
    if [ ! -z "$VIRT_DOCKER" ]; 
    then
-      docker start $name
+     docker start $name
    fi
 
    echo "$name started"
@@ -316,15 +316,15 @@ function _read_file()
 {
    while read line 
    do 
-      export name=$(echo $line   | cut -d";" -f2)
-      export dnsip=$(echo $line  | cut -d";" -f7)
-      export extip=$(echo $line  | cut -d";" -f9)
-      export intip=$(echo $line  | cut -d";" -f10)
-      export bridge=$(echo $line | cut -d";" -f11)
-      export crontab=$(echo $line | cut -d";" -f12)
-      export status=$(echo $line | cut -d";" -f13)
-      export iso=$(echo $line | cut -d";" -f14)
-      export command=$(echo $line | cut -d";" -f15)
+      export name=$(echo "$line"   | cut -d";" -f2)
+      export dnsip=$(echo "$line"  | cut -d";" -f7)
+      export extip=$(echo "$line"  | cut -d";" -f9)
+      export intip=$(echo "$line"  | cut -d";" -f10)
+      export bridge=$(echo "$line" | cut -d";" -f11)
+      export crontab=$(echo "$line" | cut -d";" -f12)
+      export status=$(echo "$line" | cut -d";" -f13)
+      export iso=$(echo "$line" | cut -d";" -f14)
+      export command=$(echo "$line" | cut -d";" -f15)
 
       export VIRT_LXC=$(dpkg -l| grep -i lxc)
       export VIRT_DOCKER=$(dpkg -l| grep -i docker)
