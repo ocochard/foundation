@@ -53,8 +53,8 @@ function The_creation_docker()
 
    if [ -z "$EXIST" ]
    then
-      echo "docker run -d -v /tmp:/tmp --name $name $iso" 
-      docker run -d -v /tmp:/tmp --name $name $iso
+      echo "docker -h $name run -d -v /tmp:/tmp --name $name $iso" 
+      docker run -h $name -d -v /tmp:/tmp --name $name $iso
 
       echo "Crontab configuration"
       The_config_docker
@@ -268,10 +268,10 @@ function _create_container()
    #BRIDGE=$5
    #CRONTAB=$6
    IMG="$DIRECTORY/$image"
-   NEWIMG=$(echo $IMG | sed s/maas/tar.gz/)
-   NEWIMAGE=$(echo $image | sed s/maas/tar.gz/)
+   #NEWIMG=$(echo $IMG | sed s/maas/tar.gz/)
+   #NEWIMAGE=$(echo $image | sed s/maas/tar.gz/)
    echo "->>image $IMG"
-   if [ ! -e "$NEWIMG" ]
+   if [ ! -f "$IMG" ]
    then
       echo "This image des not exist!!"
       WGETURL="$URL/maasapi/templates/$image" 
@@ -280,7 +280,8 @@ function _create_container()
       mv $IMG $NEWIMG
 
       if [ ! -z "$VIRT_DOCKER" ]; then
-         zcat $NEWIMG | docker load
+         echo "zcat $NEWIMG | docker load"
+         zcat $IMG | docker load
       fi
 
       #IMG=$(echo $IMG | sed s/maas/tar.gz/)
@@ -292,6 +293,7 @@ function _create_container()
       The_creation $NEWIMG $NEWIMAGE result
    fi
    if [ ! -z "$VIRT_DOCKER" ]; then
+      echo "lolo"
       The_creation_docker $NEWIMG $NEWIMAGE result
    fi
 
