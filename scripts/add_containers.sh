@@ -1,29 +1,33 @@
 #!/bin/bash
 
+#Force to do a minimum of error management
+set -eu
+
 #URL="--proxy http://http-proxy.rd.francetelecom.fr:3128 http://p-vite2.riv.rd.francetelecom.fr/"
 URL=$URL_MAAS
 IPPROBE="250.250.250.250"
 ETHPROBE="eth0"
 GATEWAY="192.168.2.10"
 DIRECTORY="/tmp"
-FILE=$DIRECTORY"/addresult.txt"
+FILE=$DIRECTORY/addresult.txt
+LXC_PATH=$(lxc-config lxc.lxcpath)
+LOG=${DIRECTORY}/error.log
 
+# Die and log function
+die() { echo -n "EXIT: " >>${LOG}; echo "$@" >>${LOG}; exit 1; }
 
 # Stop container
 function _stop_container()
 {
-   if lxc-wait -n $1 -s RUNNING -t 0 
-   then
+   if lxc-wait -n $1 -s RUNNING -t 0; then
       echo "lxc-stop -n $1"
-      lxc-stop -n $1
+      lxc-stop -n $1 || die "can't stop container $1"
    fi
 
    COUNTER=0
-   while ! lxc-wait -n $1 -s STOPPED -t 0
-   do
+   while ! lxc-wait -n $1 -s STOPPED -t 0; do
       echo "$1 isn't stopped yet !!!"
-      if [ $COUNTER -lt 10 ]
-      then
+      if [ $COUNTER -lt 10 ]; then
          echo "Stop process counter $COUNTER"
          let COUNTER=COUNTER+1
       else
@@ -38,11 +42,10 @@ function _stop_container()
 # Start container
 function _start_container()
 {
-   if lxc-wait -n $1 -s RUNNING -t 0
-   then
+   if lxc-wait -n $1 -s RUNNING -t 0; then
       echo "$1 started"
    else
-      lxc-start -n $1 -d
+      lxc-start -n $1 -d || die "Can't start container $1"
    fi
 
    echo "$1 started"
@@ -51,10 +54,9 @@ function The_creation_docker()
 {
    EXIST=$(docker ps | grep -i $name)
 
-   if [ -z "$EXIST" ]
-   then
+   if [ -z "$EXIST" ]; then
       echo "docker -h $name run -d -v /tmp:/tmp --name $name $iso" 
-      docker run -h $name -d -v /tmp:/tmp --name $name $iso
+      docker run -h $name -d -v /tmp:/tmp --name $name $iso || die "Can't run docker ${name}"
 
       echo "Crontab configuration"
       The_config_docker
@@ -70,12 +72,16 @@ function The_config_lxc()
    echo "name: $name"
    echo "iso: $iso"
    echo "crontab: $crontab"
-   echo "#!/bin/bash" > /var/lib/lxc/$name/rootfs/tmp/$CONTAINER_ID
-   echo "" >> /var/lib/lxc/$name/rootfs/tmp/$CONTAINER_ID
+   {
+      echo "#!/bin/bash"
+      echo ""
+   } > ${LXC_PATH}/$name/rootfs/tmp/$CONTAINER_ID
    # echo "croncmd=\"/opt/dockbaley/scripts/process.sh\"" >> /tmp/$CONTAINER_ID
-   echo "croncmd=\"$command\"" >> /var/lib/lxc/$name/rootfs/tmp/$CONTAINER_ID
-   echo "cronjob=\"$crontab \$croncmd\"" >> /var/lib/lxc/$name/rootfs/tmp/$CONTAINER_ID
-   echo "( crontab -l | grep -v \"\$croncmd\" ; echo \"\$cronjob\" ) | crontab -" >> /var/lib/lxc/$name/rootfs/tmp/$CONTAINER_ID
+   {
+      echo "croncmd=\"$command\""
+      echo "cronjob=\"$crontab \$croncmd\""
+      echo "( crontab -l | grep -v \"\$croncmd\" ; echo \"\$cronjob\" ) | crontab -"
+   } >> ${LXC_PATH}/$name/rootfs/tmp/$CONTAINER_ID
 }
 
 function The_config_docker()
@@ -84,12 +90,14 @@ function The_config_docker()
    echo "name: $name"
    echo "iso: $iso"
    echo "crontab: $crontab"
-   echo "#!/bin/bash" > /tmp/$CONTAINER_ID
-   echo "" >> /tmp/$CONTAINER_ID
-   # echo "croncmd=\"/opt/dockbaley/scripts/process.sh\"" >> /tmp/$CONTAINER_ID
-   echo "croncmd=\"$command\"" >> /tmp/$CONTAINER_ID
-   echo "cronjob=\"$crontab \$croncmd\"" >> /tmp/$CONTAINER_ID
-   echo "( crontab -l | grep -v \"\$croncmd\" ; echo \"\$cronjob\" ) | crontab -" >> /tmp/$CONTAINER_ID
+   {
+      echo "#!/bin/bash"
+      echo ""
+      # echo "croncmd=\"/opt/dockbaley/scripts/process.sh\""
+      echo "croncmd=\"$command\""
+      echo "cronjob=\"$crontab \$croncmd\""
+      echo "( crontab -l | grep -v \"\$croncmd\" ; echo \"\$cronjob\" ) | crontab -"
+   } > /tmp/$CONTAINER_ID
 }
 
 # The_creation $NODE $EXTIP $DNSIP $NEWIMG $NEWIMAGE result
@@ -97,8 +105,8 @@ function The_config_docker()
 #The_creation $NEWIMG $NEWIMAGE result
 function The_creation()
 {
-   DIRECTORY="/var/lib/lxc/$name"
-   CRONFILE=$DIRECTORY"/rootfs/root/crontab"
+   DIRECTORY="${LXC_PATH}/$name"
+   #CRONFILE=$DIRECTORY"/rootfs/root/crontab"
    RESOLV=$DIRECTORY"/rootfs/etc/resolv.conf"
    NETWORK=$DIRECTORY"/rootfs/etc/network/interfaces"
    IPPROBE="250.250.250.250"
@@ -110,10 +118,9 @@ function The_creation()
    local __result=$3
 
    # Test if the container exists
-   EXIST=`lxc-ls -1 | grep $name`
+   EXIST=$(lxc-ls $name)
 
-   if [ ! -z "$EXIST" ]
-   then
+   if [ ! -z "$EXIST" ]; then
       echo "$name exits yet !!!"
       #echo "false"
       local myresult='false'
@@ -122,18 +129,10 @@ function The_creation()
       echo ""
    else
       echo ""
-      echo "mkdir /var/lib/lxc/$name"
-      mkdir /var/lib/lxc/$name
-      echo ""
-      echo "cp $1 /var/lib/lxc/$name"
-      cp $1 /var/lib/lxc/$name
-      echo ""
-      echo "cd /var/lib/lxc/$name"
-      cd /var/lib/lxc/$name
-      echo ""
-      echo "tar --numeric-owner -xzf $2"
-      tar --numeric-owner -xzf $2
-      echo ""
+      mkdir -p ${LXC_PATH}/$name || die "Can't create ${LXC_PATH}/$name"
+      cp $1 ${LXC_PATH}/$name || die "Can't cp $1 ${LXC_PATH}/$name"
+      cd ${LXC_PATH}/$name || die "Can't cd ${LXC_PATH}/$name"
+      tar --numeric-owner -xzf $1 || die "can't tar --numeric-owner -xzf $1"
       #echo "sed s/cdpweather/$name config > config.new"
       #sed s/cdpweather/$name/ config > config.new
       #echo ""
@@ -144,15 +143,12 @@ function The_creation()
       echo "-->$crontab"
       # echo "$crontab" > $CRONFILE
       The_config_lxc
-      echo ""
-      echo "rm -f $2 config.new"
-      rm -f $2
+      rm -f $2 || die "Can't rm -f $2"
       echo ""
       #echo "cp -n config.new config"
       #cp -f config.new config
 
-      if [ "$dnsip" != "-.-.-.-" ]
-      then
+      if [ "$dnsip" != "-.-.-.-" ]; then
          echo ""
          echo "modify dns"
          #_modify_conf_dns "nameserver" $dnsip $RESOLV
@@ -162,7 +158,7 @@ function The_creation()
          #_modify_conf_address $IPPROBE $extip $NETWORK
       fi
       
-      echo $name > /var/lib/lxc/$name/rootfs/etc/hostname
+      echo $name > ${LXC_PATH}/$name/rootfs/etc/hostname
 
       echo "_start_container $name"
       _start_container $name
@@ -172,22 +168,24 @@ function The_creation()
 
 function _create_config() 
 {
-   echo "# The $name config" > config
-   echo "lxc.network.type = veth" >> config
-   echo "lxc.network.flags = up" >> config
-   echo "lxc.network.link = $bridge" >> config
-   echo "lxc.network.ipv4 = 0.0.0.0/24" >> config
-   echo "lxc.rootfs = /var/lib/lxc/$name/rootfs" >> config
-   echo "" >> config
-   echo "# Common configuration" >> config
-   echo "lxc.include = /usr/share/lxc/config/debian.common.conf" >> config
-   echo "" >> config
-   echo "# Container specific configuration" >> config
-   echo "#lxc.mount = /var/lib/lxc/$name/fstab" >> config
-   echo "lxc.utsname = $name" >> config
-   echo "lxc.arch = $archi" >> config
-   echo "lxc.autodev = 1" >> config
-   echo "#lxc.kmsg = 0" >> config
+   {
+   echo "# The $name config"
+   echo "lxc.network.type = veth"
+   echo "lxc.network.flags = up"
+   echo "lxc.network.link = $bridge"
+   echo "lxc.network.ipv4 = 0.0.0.0/24"
+   echo "lxc.rootfs = ${LXC_PATH}/$name/rootfs"
+   echo ""
+   echo "# Common configuration"
+   echo "lxc.include = /usr/share/lxc/config/debian.common.conf"
+   echo ""
+   echo "# Container specific configuration"
+   echo "#lxc.mount = ${LXC_PATH}/$name/fstab"
+   echo "lxc.utsname = $name"
+   echo "lxc.arch = $archi"
+   echo "lxc.autodev = 1"
+   echo "#lxc.kmsg = 0"
+   } > config
 }
 
 # Clone the container
@@ -197,10 +195,9 @@ function _clone_container()
    local __result=$3
 
    # Test if the container exists
-   EXIST=`lxc-ls -1 | grep $2`
+   EXIST=$(lxc-ls -1 | grep $2)
 
-   if [ ! -z "$EXIST" ]
-   then
+   if [ ! -z "$EXIST" ]; then
       echo "$2 exits yet !!!"
       #echo "false"
       local myresult='false'
@@ -208,14 +205,12 @@ function _clone_container()
       # exit 0
    else
       echo "lxc-clone -o $1 -n $2"
-      lxc-clone -o $1 -n $2
+      lxc-clone -o $1 -n $2 || die "Can't clone $1 to $2"
 
       COUNTER=0
-      while ! lxc-wait -n $2 -s STOPPED -t 0
-      do
+      while ! lxc-wait -n $2 -s STOPPED -t 0; do
          echo "$2 isn't created yet !!!"
-         if [ $COUNTER -lt 10 ]
-         then
+         if [ $COUNTER -lt 10 ]; then
             echo "Create process counter $COUNTER"
             let COUNTER=COUNTER+1
          else
@@ -271,15 +266,14 @@ function _create_container()
    #NEWIMG=$(echo $IMG | sed s/maas/tar.gz/)
    #NEWIMAGE=$(echo $image | sed s/maas/tar.gz/)
    echo "->>image $IMG"
-   if [ ! -f "$IMG" ]
-   then
+   if [ ! -f "$IMG" ]; then
       echo "This image des not exist!!"
-      WGETURL="$URL/maasapi/templates/$image" 
-      echo "$WGETURL > $IMG"
-      curl $WGETURL > $IMG
-      mv $IMG $NEWIMG
+      #WGETURL="$URL/maasapi/templates/$image" 
+      #echo "$WGETURL > $IMG"
+      #curl $WGETURL > $IMG
+      #mv $IMG $NEWIMG
 
-      if [ ! -z "$VIRT_DOCKER" ]; then
+      if ($VIRT_DOCKER); then
          echo "zcat $NEWIMG | docker load"
          zcat $IMG | docker load
       fi
@@ -289,10 +283,11 @@ function _create_container()
    #echo "--> $crontab"
    #echo "$crontab" > /root/crontab
    #The_creation $NODE $EXTIP $DNSIP $NEWIMG $NEWIMAGE $BRIDGE $CRONTAB result
-   if [ ! -z "$VIRT_LXC" ]; then
-      The_creation $NEWIMG $NEWIMAGE result
+   if ($VIRT_LXC); then
+      #The_creation $NEWIMG $NEWIMAGE result
+      The_creation $IMG $name result
    fi
-   if [ ! -z "$VIRT_DOCKER" ]; then
+   if ($VIRT_DOCKER); then
       echo "lolo"
       The_creation_docker $NEWIMG $NEWIMAGE result
    fi
@@ -304,14 +299,14 @@ function _create_container()
 
 function _create_container_docker()
 {
-   docker run -d -v /tmp:/tmp $image
+   docker run -d -v /tmp:/tmp $image || die "Can't docker run $image"
 }
 
 function __create_container()
 {
    NODE=$1
-   infoip=$2
-   infodns=$3
+   #infoip=$2
+   #infodns=$3
    #IPname=${infoip//./_}
    #IPdns=${infodns//./_}
    #Host=${HOSTNAME}
@@ -319,7 +314,7 @@ function __create_container()
    #NODE=$Host":"$IPname":"$IPdns
    #echo "->> $NODE"
    #CONTAINER="template"
-   DIRECTORY="/var/lib/lxc/$NODE"
+   DIRECTORY="${LXC_PATH}/$NODE"
    RESOLV=$DIRECTORY"/rootfs/etc/resolv.conf"
    NETWORK=$DIRECTORY"/rootfs/etc/network/interfaces"
 
@@ -330,19 +325,19 @@ function __create_container()
    echo "Clone the container $CONTAINER"
    _clone_container $CONTAINER $NODE result
 
-   #if [ "$result" == "true" ]
-   if [ "$result" == "inutil" ]
-   then
+   # BUG: $result is not defined !!!
+   if [ "$result" == "inutil" ]; then
       echo "Modify $RESOLV from $NODE"
       _modify_conf_dns "nameserver" $3 $RESOLV
 
       echo "Modify $NETWORK from $NODE"
       _modify_conf_address $IPPROBE $2 $NETWORK
-
-      echo "" >> $NETWORK
-      echo "# Static route" >> $NETWORK
-      echo "post-up ip route del 0/0" >> $NETWORK
-      echo "post-up ip route add default via $GATEWAY src $2 dev $ETHPROBE" >> $NETWORK
+      {
+         echo ""
+         echo "# Static route"
+         echo "post-up ip route del 0/0"
+         echo "post-up ip route add default via $GATEWAY src $2 dev $ETHPROBE"
+      }  >> $NETWORK
 
       sleep 2
 
@@ -359,26 +354,37 @@ function __create_container()
 function _read_file()
 {
    while read line 
-   do 
-      export name=$(echo "$line"     | cut -d";" -f2)
-      export image=$(echo "$line"    | cut -d";" -f3)
-      export archi=$(echo "$line"    | cut -d";" -f4)
-      export dnsip=$(echo "$line"    | cut -d";" -f8)
-      export extip=$(echo "$line"    | cut -d";" -f9)
-      export bridge=$(echo "$line"   | cut -d";" -f11)
-      export crontab=$(echo "$line"  | cut -d";" -f12)
-      export command=$(echo "$line"  | cut -d";" -f15)
-      export iso=$(echo "$line"  | cut -d";" -f14)
+   do
+      export name
+      name=$(echo "$line"     | cut -d";" -f2)
+      export image
+      image=$(echo "$line"    | cut -d";" -f3)
+      export archi
+      archi=$(echo "$line"    | cut -d";" -f4)
+      export dnsip
+      dnsip=$(echo "$line"    | cut -d";" -f8)
+      export extip
+      extip=$(echo "$line"    | cut -d";" -f9)
+      export bridge
+      bridge=$(echo "$line"   | cut -d";" -f11)
+      export crontab
+      crontab=$(echo "$line"  | cut -d";" -f12)
+      export command
+      command=$(echo "$line"  | cut -d";" -f15)
+      export iso
+      iso=$(echo "$line"  | cut -d";" -f14)
 
-      export VIRT_LXC=$(dpkg -l| grep -i lxc)
-      export VIRT_DOCKER=$(dpkg -l| grep -i docker)
+      export VIRT_LXC
+      dpkg-query -l 'lxc*' >/dev/null 2>&1 && VIRT_LXC=true || VIRT_LXC=false
+      export VIRT_DOCKER
+      dpkg-query -l 'docker*' >/dev/null 2>&1 && VIRT_DOCKER=true || VIRT_DOCKER=false
       #export $crontab
       #echo "$crontab" > /root/crontab
       #echo "Container $name $extip $dnsip $image $bridge $crontab"
       #_create_container $name $extip $dnsip $image $bridge $crontab
       
       _create_container
-      # if [ -z "$VIRT_LXC" ]; then
+      # f ($VIRT_LXC); then
          # _create_container
       # fi
    done < $1
@@ -395,12 +401,15 @@ function _search_new_container()
    data="name=$NAME&action=$ACTION"
    #curl --data $data --proxy http://http-proxy.rd.francetelecom.fr:3128 http://p-vite2.riv.rd.francetelecom.fr/newapi/getcontainers.php > ${directory}
    echo "curl --data $data $URL/maasapi/getcontainers.php"
-   curl --data $data $URL/maasapi/getcontainers.php > ${directory}
+   curl --data $data $URL/maasapi/getcontainers.php > ${directory} || die "Can't curl $URL/maasapi/getcontainers.php"
 
    _read_file $1
 }
 
-# Test arguments
+### Main
+
+# Clear previous log file
+[ -f ${LOG} ] && rm ${LOG}
 
 _search_new_container $FILE
 
